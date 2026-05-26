@@ -480,6 +480,7 @@ module_order:
   - somalier
   - methylqa
   - mosdepth
+  - alignstats
   - phantompeakqualtools
   - qualimap
   - bamdst
@@ -623,6 +624,7 @@ module_order:
   - checkqc
   - bcl2fastq
   - bclconvert
+  - ultima
   - interop
   - ivar
   - flash

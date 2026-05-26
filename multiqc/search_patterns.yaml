@@ -19,6 +19,39 @@ afterqc:
   fn: "*.json"
   contents: "allow_mismatch_in_poly"
   num_lines: 10000
+alignstats/combo:
+  fn:
+    - "alignstats_combo_mqc.tsv"
+    - "alignstats_combo_mqc.txt"
+    - "*alignstats_combo_mqc.tsv"
+    - "*alignstats_combo_mqc.txt"
+alignstats/json:
+  fn:
+    - "*.alignstats.json"
+    - "*.alignstats.txt"
+  contents: "WgsCoverageMean"
+ultima/inventory:
+  fn: "ultima_run_inventory_mqc.tsv"
+ultima/demux:
+  fn: "ultima_demux_summary_mqc.tsv"
+ultima/trimmer_stats:
+  fn: "ultima_trimmer_stats_mqc.tsv"
+ultima/trimmer_failures:
+  fn: "ultima_trimmer_failures_mqc.tsv"
+ultima/flowq:
+  fn: "ultima_flowq_summary_mqc.tsv"
+ultima/snvq:
+  fn: "ultima_snvq_summary_mqc.tsv"
+ultima/coverage:
+  fn: "ultima_coverage_summary_mqc.tsv"
+ultima/picard:
+  fn: "ultima_picard_summary_mqc.tsv"
+ultima/contamination:
+  fn: "ultima_contamination_mqc.tsv"
+ultima/upload:
+  fn: "ultima_upload_status_mqc.tsv"
+ultima/unmatched:
+  fn: "ultima_unmatched_mqc.tsv"
 anglerfish:
   fn: "*.json"
   contents: "anglerfish_version"
