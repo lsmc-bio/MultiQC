@@ -299,6 +299,7 @@ Order in which modules appear in the report. Each entry is either a module ID, o
 - somalier
 - methylqa
 - mosdepth
+- alignstats
 - phantompeakqualtools
 - qualimap
 - bamdst
@@ -439,6 +440,7 @@ Order in which modules appear in the report. Each entry is either a module ID, o
 - checkqc
 - bcl2fastq
 - bclconvert
+- ultima
 - interop
 - ivar
 - flash
@@ -1267,6 +1269,38 @@ afterqc:
   fn: "*.json"
   contents: allow_mismatch_in_poly
   num_lines: 10000
+alignstats/combo:
+  - fn: alignstats_combo_mqc.tsv
+  - fn: alignstats_combo_mqc.txt
+  - fn: "*alignstats_combo_mqc.tsv"
+  - fn: "*alignstats_combo_mqc.txt"
+alignstats/json:
+  - fn: "*.alignstats.json"
+    contents: WgsCoverageMean
+  - fn: "*.alignstats.txt"
+    contents: WgsCoverageMean
+ultima/inventory:
+  fn: ultima_run_inventory_mqc.tsv
+ultima/demux:
+  fn: ultima_demux_summary_mqc.tsv
+ultima/trimmer_stats:
+  fn: ultima_trimmer_stats_mqc.tsv
+ultima/trimmer_failures:
+  fn: ultima_trimmer_failures_mqc.tsv
+ultima/flowq:
+  fn: ultima_flowq_summary_mqc.tsv
+ultima/snvq:
+  fn: ultima_snvq_summary_mqc.tsv
+ultima/coverage:
+  fn: ultima_coverage_summary_mqc.tsv
+ultima/picard:
+  fn: ultima_picard_summary_mqc.tsv
+ultima/contamination:
+  fn: ultima_contamination_mqc.tsv
+ultima/upload:
+  fn: ultima_upload_status_mqc.tsv
+ultima/unmatched:
+  fn: ultima_unmatched_mqc.tsv
 anglerfish:
   fn: "*.json"
   contents: anglerfish_version
@@ -1491,7 +1525,7 @@ ccs/v4:
   num_lines: 2
   max_filesize: 1024
 ccs/v5:
-  contents: '"id": "ccs_processing"'
+  contents: "\"id\": \"ccs_processing\""
   fn: "*.json"
 checkatlas/summary:
   fn: "*.tsv"
@@ -1519,17 +1553,17 @@ checkatlas/dimred:
   num_lines: 1
 cellranger/count_html:
   - fn: "*.html"
-    contents: '"command":"Cell Ranger","subcommand":"count"'
+    contents: "\"command\":\"Cell Ranger\",\"subcommand\":\"count\""
     num_lines: 20
   - fn: "*.html"
-    contents: '"command": "Cell Ranger", "subcommand": "count"'
+    contents: "\"command\": \"Cell Ranger\", \"subcommand\": \"count\""
     num_lines: 20
 cellranger/vdj_html:
   - fn: "*.html"
-    contents: '"command":"Cell Ranger","subcommand":"vdj"'
+    contents: "\"command\":\"Cell Ranger\",\"subcommand\":\"vdj\""
     num_lines: 20
   - fn: "*.html"
-    contents: '"command": "Cell Ranger", "subcommand": "vdj"'
+    contents: "\"command\": \"Cell Ranger\", \"subcommand\": \"vdj\""
     num_lines: 20
 cellranger_arc:
   - fn: "*.html"
@@ -1537,7 +1571,7 @@ cellranger_arc:
     num_lines: 250
 cells2stats/run:
   fn: RunStats.json
-  contents: '"AnalysisID": "c2s.'
+  contents: "\"AnalysisID\": \"c2s."
   num_lines: 100
 checkm:
   - contents_re: ".*Bin Id(?:\t| {3,})Marker lineage(?:\t| {3,})# genomes(?:\t| {3,})#\
@@ -1577,11 +1611,11 @@ damageprofiler:
   fn: "*dmgprof.json"
 deacon:
   fn: "*.json"
-  contents: '"version": "deacon'
+  contents: "\"version\": \"deacon"
   num_lines: 30
 dedup:
   fn: "*.json"
-  contents: '"tool_name": "DeDup"'
+  contents: "\"tool_name\": \"DeDup\""
   num_lines: 20
 deeptools/bamPEFragmentSizeTable:
   contents: "\tFrag. Sampled\tFrag. Len. Min.\tFrag. Len. 1st. Qu.\tFrag. Len. Mean\t\
@@ -1664,7 +1698,7 @@ eigenstratdatabasetools:
   fn: "*_eigenstrat_coverage.json"
 fastp:
   fn: "*.json"
-  contents: '"before_filtering": {'
+  contents: "\"before_filtering\": {"
   num_lines: 50
 fastq_screen:
   fn: "*_screen.txt"
@@ -1791,7 +1825,7 @@ hifiasm:
   num_lines: 1
 hifi_trimmer:
   fn: "*.json"
-  contents: '"total_reads_trimmed"'
+  contents: "\"total_reads_trimmed\""
   num_lines: 10
 hisat2:
   contents: "HISAT2 summary stats:"
@@ -1814,7 +1848,7 @@ hops:
   fn: heatmap_overview_Wevid.json
 hostile:
   fn: "*.json"
-  contents: '"reads_removed_proportion"'
+  contents: "\"reads_removed_proportion\""
   num_lines: 100
 humid/stats:
   fn: stats.dat
@@ -1837,7 +1871,7 @@ interop/summary:
 interop/index-summary:
   contents: Total Reads,PF Reads,% Read Identified (PF),CV,Min,Max
 isoseq/refine-json:
-  contents: '"num_reads_fl"'
+  contents: "\"num_reads_fl\""
   fn: "*.json"
 isoseq/refine-csv:
   contents: id,strand,fivelen,threelen,polyAlen,insertlen,primer
@@ -2024,7 +2058,7 @@ seqera_cli/json:
   fn: workflow.json
 sequali:
   fn: "*.json"
-  contents: '"sequali_version"'
+  contents: "\"sequali_version\""
   num_lines: 10
 somalier/somalier-ancestry:
   fn: "*.somalier-ancestry.tsv"
@@ -2141,7 +2175,7 @@ purple/qc:
 purple/purity:
   fn: "*.purple.purity.tsv"
 pycoqc:
-  contents: '"pycoqc":'
+  contents: "\"pycoqc\":"
   num_lines: 2
 pychopper:
   contents: "Classification\tRescue"
@@ -2328,7 +2362,7 @@ samtools/markdup_txt:
   num_lines: 2
 samtools/markdup_json:
   contents:
-    - '"COMMAND":'
+    - "\"COMMAND\":"
     - samtools markdup
   num_lines: 10
 sargasso:
@@ -2340,7 +2374,7 @@ seqkit/stats:
   contents_re: ^file\s+format\s+type\s+num_seqs\s+sum_len
   num_lines: 1
 seqwho:
-  contents: '  "Per Base Seq": ['
+  contents: "  \"Per Base Seq\": ["
   num_lines: 10
 seqyclean:
   fn: "*_SummaryStatistics.tsv"
@@ -2401,10 +2435,10 @@ sortmerna:
   contents: Minimal SW score based on E-value
 spaceranger/count_html:
   - fn: "*.html"
-    contents: '"command":"Space Ranger","subcommand":"count"'
+    contents: "\"command\":\"Space Ranger\",\"subcommand\":\"count\""
     num_lines: 20
   - fn: "*.html"
-    contents: '"command": "Space Ranger", "subcommand": "count"'
+    contents: "\"command\": \"Space Ranger\", \"subcommand\": \"count\""
     num_lines: 20
 stacks/gstacks:
   fn: gstacks.log.distribs
@@ -2427,15 +2461,15 @@ supernova/report:
 supernova/summary:
   fn: summary.json
   num_lines: 120
-  contents: '"lw_mean_mol_len":'
+  contents: "\"lw_mean_mol_len\":"
 supernova/molecules:
   fn: histogram_molecules.json
   num_lines: 10
-  contents: '"description": "molecules",'
+  contents: "\"description\": \"molecules\","
 supernova/kmers:
   fn: histogram_kmer_count.json
   num_lines: 10
-  contents: '"description": "kmer_count",'
+  contents: "\"description\": \"kmer_count\","
 sylphtax:
   fn: "*.sylphmpa"
 telseq:
@@ -3228,9 +3262,9 @@ Replace sample names with placeholders before sending data to the AI provider.
 
 #### `ai_provider`
 
-**Type**: <code>Literal["seqera", "openai", "anthropic", "aws_bedrock", "custom"]</code> (default: `"seqera"`)
+**Type**: <code>Literal["seqera", "openai", "anthropic", "aws_bedrock", "custom"]</code>
 
-AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom.
+AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Leave unset to auto-detect from environment variables.
 
 #### `ai_model`
 
@@ -3241,7 +3275,7 @@ Model name. Provider-specific.
 **Examples**:
 
 ```yaml
-ai_model: gpt-4o
+ai_model: gpt-5.5
 ```
 
 ```yaml

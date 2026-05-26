@@ -119,8 +119,8 @@ make_pdf: bool
 
 ai_summary: bool
 ai_summary_full: bool
-ai_provider: AiProviderLiteral
-ai_model: str
+ai_provider: Optional[AiProviderLiteral]
+ai_model: Optional[str]
 ai_custom_endpoint: Optional[str]
 ai_auth_type: Optional[Literal["bearer", "api-key"]]
 ai_retries: int

@@ -8,6 +8,8 @@ function handleStreamError(error) {
 function isReasoningModel(model) {
   if (!model) return false;
   const reasoningModels = [
+    // GPT-5 family reasoning models
+    "gpt-5",
     // OpenAI reasoning models
     "o1",
     "o1-preview",

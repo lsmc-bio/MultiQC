@@ -20,8 +20,13 @@ from multiqc.utils import config_schema
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_OPENAI_MODEL = "gpt-5.5"
+GPT55_CONTEXT_WINDOW = 1_050_000
+
 # List of known reasoning models
 REASONING_MODELS = {
+    # GPT-5 family reasoning models
+    "gpt-5",
     # OpenAI reasoning models
     "o1",
     "o1-preview",
@@ -317,13 +322,16 @@ class OpenAiClient(Client):
             self.title = endpoint
         else:
             self.endpoint = "https://api.openai.com/v1/chat/completions"
-            self.model = config.ai_model or "gpt-4o"
+            self.model = config.ai_model or DEFAULT_OPENAI_MODEL
             self.name = "openai"
             self.title = "OpenAI"
 
     def max_tokens(self) -> int:
         if config.ai_custom_context_window:
             return config.ai_custom_context_window
+
+        if self.model.startswith("gpt-5.5"):
+            return GPT55_CONTEXT_WINDOW
 
         # Reasoning models have different context windows
         if is_reasoning_model(self.model):
