@@ -20,8 +20,12 @@
       return storedTheme;
     }
 
-    // Only use system preference for "auto" or no stored theme
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    // Default new reports to dark mode. Explicit user selections still win.
+    return storedTheme === "auto"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : "dark";
   };
 
   const setTheme = (theme) => {

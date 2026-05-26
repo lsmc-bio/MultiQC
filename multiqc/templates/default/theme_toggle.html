@@ -14,9 +14,9 @@ Theme toggle dropdown component.
     id="bd-theme"
     data-bs-toggle="dropdown"
     aria-expanded="false"
-    aria-label="Toggle theme (auto)"
+    aria-label="Toggle theme (dark)"
   >
-    <span class="theme-icon-active align-text-bottom">{{ material_icon('mdi:circle-half-full', 16) }}</span>
+    <span class="theme-icon-active align-text-bottom">{{ material_icon('mdi:weather-night', 16) }}</span>
     <span id="bd-theme-text" class="visually-hidden">Theme</span>
   </button>
   <ul class="dropdown-menu" aria-labelledby="bd-theme">
@@ -35,21 +35,21 @@ Theme toggle dropdown component.
     <li>
       <button
         type="button"
-        class="dropdown-item d-flex align-items-center"
+        class="dropdown-item d-flex align-items-center active"
         data-bs-theme-value="dark"
-        aria-pressed="false"
+        aria-pressed="true"
       >
         <span class="me-2">{{ material_icon('mdi:weather-night', 16) }}</span>
         Dark
-        <span class="ms-auto check-icon d-none">{{ material_icon('mdi:check', 16) }}</span>
+        <span class="ms-auto check-icon">{{ material_icon('mdi:check', 16) }}</span>
       </button>
     </li>
     <li>
       <button
         type="button"
-        class="dropdown-item d-flex align-items-center active"
+        class="dropdown-item d-flex align-items-center"
         data-bs-theme-value="auto"
-        aria-pressed="true"
+        aria-pressed="false"
       >
         <span class="me-2">{{ material_icon('mdi:circle-half-full', 16) }}</span>
         Auto
