@@ -3,7 +3,20 @@ from __future__ import annotations
 import csv
 import json
 from io import StringIO
+from pathlib import Path
 from typing import Dict
+
+NATIVE_MARKER_KEYS = {
+    "MappedReads",
+    "MappedReadsPct",
+    "AlignedReadLengthMean",
+    "InsertSizeMean",
+    "WgsCoverageMean",
+    "CapCoverageMean",
+    "FilteredRecordsPct",
+}
+
+GENERIC_NATIVE_FILENAMES = {"report.json", "report.txt", "alignstats.json", "alignstats.txt"}
 
 
 def parse_combo_tsv(text: str | None, filename: str) -> Dict[str, Dict[str, object]]:
@@ -39,4 +52,18 @@ def parse_native_report(text: str | None, filename: str) -> Dict[str, object]:
         raise ValueError(f"AlignStats native report is not valid JSON-like output: {filename}") from exc
     if not isinstance(parsed, dict):
         raise ValueError(f"AlignStats native report must be an object: {filename}")
+    if not NATIVE_MARKER_KEYS.intersection(parsed):
+        raise ValueError(f"AlignStats native report does not contain recognized AlignStats metrics: {filename}")
     return parsed
+
+
+def native_sample_name(filename: str, root: str | None, fallback: str) -> str:
+    if filename.endswith(".alignstats.json"):
+        sample = filename[: -len(".alignstats.json")]
+    elif filename.endswith(".alignstats.txt"):
+        sample = filename[: -len(".alignstats.txt")]
+    elif filename in GENERIC_NATIVE_FILENAMES and root:
+        sample = Path(root).name
+    else:
+        sample = fallback
+    return sample or fallback

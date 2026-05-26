@@ -1276,9 +1276,23 @@ alignstats/combo:
   - fn: "*alignstats_combo_mqc.txt"
 alignstats/json:
   - fn: "*.alignstats.json"
-    contents: WgsCoverageMean
+    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    num_lines: 500
   - fn: "*.alignstats.txt"
-    contents: WgsCoverageMean
+    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    num_lines: 500
+  - fn: alignstats.json
+    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    num_lines: 500
+  - fn: alignstats.txt
+    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    num_lines: 500
+  - fn: report.json
+    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    num_lines: 500
+  - fn: report.txt
+    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    num_lines: 500
 ultima/inventory:
   fn: ultima_run_inventory_mqc.tsv
 ultima/demux:

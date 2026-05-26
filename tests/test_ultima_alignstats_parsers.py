@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -64,5 +65,24 @@ def test_alignstats_native_json_parser() -> None:
     with pytest.raises(ValueError, match="not valid JSON-like"):
         alignstats_parser.parse_native_report("WgsCoverageMean 31.2", "bad.alignstats.txt")
 
+    with pytest.raises(ValueError, match="recognized AlignStats metrics"):
+        alignstats_parser.parse_native_report('{"InputFile": "sample.bam"}', "not-alignstats-report.json")
+
     with pytest.raises(ValueError, match="Duplicate AlignStats sample"):
         alignstats_parser.parse_combo_tsv("Sample\tMappedReadsPct\nHG003.sent\t99.1\nHG003.sent\t99.2\n", "alignstats_combo_mqc.tsv")
+
+
+def test_alignstats_native_sample_name_for_generic_reports() -> None:
+    assert alignstats_parser.native_sample_name("HG003.alignstats.json", "/work/ignored", "fallback") == "HG003"
+    assert alignstats_parser.native_sample_name("report.txt", "/work/HG003", "report") == "HG003"
+    assert alignstats_parser.native_sample_name("alignstats.json", "/work/HG004", "alignstats") == "HG004"
+
+
+def test_alignstats_search_patterns_autodetect_native_reports() -> None:
+    search_patterns = yaml.safe_load((REPO_ROOT / "multiqc/search_patterns.yaml").read_text())
+    native_patterns = search_patterns["alignstats/json"]
+    native_filenames = {pattern["fn"] for pattern in native_patterns}
+
+    assert {"*.alignstats.json", "*.alignstats.txt", "alignstats.json", "alignstats.txt", "report.json", "report.txt"} <= native_filenames
+    assert all("contents_re" in pattern for pattern in native_patterns)
+    assert all("WgsCoverageMean" in pattern["contents_re"] for pattern in native_patterns)

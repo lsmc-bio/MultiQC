@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from multiqc import report, reset
+
 
 def _load_parser():
     parser_path = Path(__file__).resolve().parents[1] / "parser.py"
@@ -16,6 +18,7 @@ def _load_parser():
 
 
 _parser = _load_parser()
+native_sample_name = _parser.native_sample_name
 parse_combo_tsv = _parser.parse_combo_tsv
 parse_native_report = _parser.parse_native_report
 
@@ -46,6 +49,15 @@ def test_parse_native_report_requires_json_object() -> None:
     with pytest.raises(ValueError, match="must be an object"):
         parse_native_report("[1, 2]", "bad.alignstats.json")
 
+    with pytest.raises(ValueError, match="recognized AlignStats metrics"):
+        parse_native_report('{"InputFile": "sample.bam"}', "not-alignstats-report.json")
+
+
+def test_native_sample_name_uses_parent_for_generic_reports() -> None:
+    assert native_sample_name("HG003.alignstats.json", "/work/ignored", "fallback") == "HG003"
+    assert native_sample_name("report.txt", "/work/HG003", "report") == "HG003"
+    assert native_sample_name("alignstats.json", "/work/HG004", "alignstats") == "HG004"
+
 
 def test_parse_combo_tsv_rejects_duplicate_samples() -> None:
     with pytest.raises(ValueError, match="Duplicate AlignStats sample"):
@@ -53,3 +65,25 @@ def test_parse_combo_tsv_rejects_duplicate_samples() -> None:
             "Sample\tMappedReadsPct\nHG003.sent\t99.1\nHG003.sent\t99.2\n",
             "alignstats_combo_mqc.tsv",
         )
+
+
+def test_module_autodetects_generic_native_report(tmp_path: Path) -> None:
+    reset()
+    sample_dir = tmp_path / "HG003"
+    sample_dir.mkdir()
+    (sample_dir / "report.txt").write_text(
+        '{\n'
+        '    "InputFile": "HG003.bam",\n'
+        '    "MappedReads": 100,\n'
+        '    "MappedReadsPct": 99.1,\n'
+        '    "WgsCoverageMean": 31.2\n'
+        '}\n'
+    )
+
+    report.analysis_files = [tmp_path]
+    report.search_files(["alignstats"])
+
+    from multiqc.modules.alignstats.alignstats import MultiqcModule
+
+    module = MultiqcModule()
+    assert module.alignstats_data["HG003"]["WgsCoverageMean"] == 31.2

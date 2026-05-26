@@ -7,7 +7,7 @@ from multiqc.base_module import BaseMultiqcModule, ModuleNoSamplesFound
 from multiqc.plots import bargraph, table
 from multiqc.plots.table_object import ColumnDict
 
-from .parser import parse_combo_tsv, parse_native_report
+from .parser import native_sample_name, parse_combo_tsv, parse_native_report
 
 log = logging.getLogger(__name__)
 
@@ -44,8 +44,9 @@ class MultiqcModule(BaseMultiqcModule):
         )
 
         self.alignstats_data: Dict[str, Dict[str, object]] = {}
+        self._sample_sources: Dict[str, str] = {}
         self._collect_combo()
-        self._collect_native_json()
+        self._collect_native_reports()
         self.alignstats_data = self.ignore_samples(self.alignstats_data)
         if not self.alignstats_data:
             raise ModuleNoSamplesFound
@@ -62,15 +63,24 @@ class MultiqcModule(BaseMultiqcModule):
     def _collect_combo(self) -> None:
         for f in self.find_log_files("alignstats/combo"):
             for sample, row in parse_combo_tsv(f["f"], f["fn"]).items():
-                self.alignstats_data[sample] = row
+                self._store_sample(sample, row, f)
                 self.add_data_source(f, sample)
 
-    def _collect_native_json(self) -> None:
+    def _collect_native_reports(self) -> None:
         for f in self.find_log_files("alignstats/json"):
             parsed = parse_native_report(f["f"], f["fn"])
-            sample = self.clean_s_name(f["s_name"], f)
-            self.alignstats_data[sample] = parsed
+            raw_sample = native_sample_name(f["fn"], f.get("root"), f["s_name"])
+            sample = self.clean_s_name(raw_sample, f)
+            self._store_sample(sample, parsed, f)
             self.add_data_source(f, sample)
+
+    def _store_sample(self, sample: str, row: Dict[str, object], file_obj: Mapping[str, object]) -> None:
+        source = "/".join(str(part).strip("/") for part in (file_obj.get("root", ""), file_obj.get("fn", "")) if part)
+        if sample in self.alignstats_data:
+            previous = self._sample_sources.get(sample, "unknown source")
+            raise ValueError(f"Duplicate AlignStats sample '{sample}' from {source}; already parsed from {previous}")
+        self.alignstats_data[sample] = row
+        self._sample_sources[sample] = source
 
     def _add_general_stats(self) -> None:
         fields = {
@@ -120,7 +130,7 @@ class MultiqcModule(BaseMultiqcModule):
                 name="Statistic Families",
                 anchor="alignstats-statistic-families",
                 description="Mean, median, mode, and standard deviation metrics reported by AlignStats.",
-                plot=table.plot(rows, table_headers(rows), {"id": "alignstats_statistic_families"}),
+                plot=table.plot(rows, table_headers(rows), {"id": "alignstats_statistic_families", "title": "Statistic Families"}),
             )
 
     def _add_all_metrics_section(self) -> None:
@@ -128,7 +138,11 @@ class MultiqcModule(BaseMultiqcModule):
             name="All AlignStats Metrics",
             anchor="alignstats-all-metrics",
             description="All parsed AlignStats metrics.",
-            plot=table.plot(self.alignstats_data, table_headers(self.alignstats_data), {"id": "alignstats_all_metrics"}),
+            plot=table.plot(
+                self.alignstats_data,
+                table_headers(self.alignstats_data),
+                {"id": "alignstats_all_metrics", "title": "All AlignStats Metrics"},
+            ),
         )
 
     def _add_bar_section(self, name: str, anchor: str, keys: list[str], description: str) -> None:
@@ -145,7 +159,7 @@ class MultiqcModule(BaseMultiqcModule):
             name=name,
             anchor=anchor,
             description=description,
-            plot=bargraph.plot(data, cats, {"id": anchor.replace("-", "_")}),
+            plot=bargraph.plot(data, cats, {"id": anchor.replace("-", "_"), "title": name}),
         )
 
 
