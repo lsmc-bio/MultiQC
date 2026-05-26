@@ -15,3 +15,22 @@ This fork implements two upstream-shaped modules:
 
 The module work is intentionally generic. LSMC-specific report grouping remains in DayOA MultiQC config.
 
+## 100 Percent Readiness Update
+
+The fork now treats duplicate sample claims as a hard error instead of silently
+overwriting them:
+
+- `BaseMultiqcModule.add_data_source()` rejects duplicate sample names within
+  the same module section when they point to different source files.
+- Custom content rejects duplicate sample names within the same custom-data
+  section, including config-provided data and merged `_mqc` files.
+- The `ultima` and `alignstats` parsers reject duplicate `Sample` rows in their
+  native TSV inputs.
+- The `ultima` module registers data sources under section-scoped keys so the
+  same sample can legitimately appear in inventory, demux, trimmer, quality,
+  coverage, and contamination sections without colliding.
+
+Focused tests cover the core data-source check, custom-content duplicate
+rejection, and the Ultima / AlignStats parser duplicate checks. The synthetic
+end-to-end path from `ur-qc` export to native `multiqc --module ultima --strict`
+now succeeds with unique section-scoped samples.

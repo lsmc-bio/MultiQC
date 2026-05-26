@@ -34,3 +34,9 @@ def test_parse_sample_first_tsv_rejects_unsafe_sample() -> None:
 
     with pytest.raises(ValueError, match="first column must be Sample"):
         parse_sample_first_tsv("run_id\tSample\n602202\t602202\n", "ultima_run_inventory_mqc.tsv")
+
+    with pytest.raises(ValueError, match="Duplicate Ultima Sample"):
+        parse_sample_first_tsv(
+            "Sample\trun_id\n602202\t602202\n602202\t602202\n",
+            "ultima_run_inventory_mqc.tsv",
+        )

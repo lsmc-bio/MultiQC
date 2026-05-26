@@ -20,6 +20,8 @@ def parse_combo_tsv(text: str | None, filename: str) -> Dict[str, Dict[str, obje
         sample = row[sample_field]
         if not sample:
             raise ValueError(f"AlignStats TSV row missing sample: {filename}")
+        if sample in rows:
+            raise ValueError(f"Duplicate AlignStats sample in {filename}: {sample}")
         rows[sample] = {
             key: value
             for key, value in row.items()
@@ -38,4 +40,3 @@ def parse_native_report(text: str | None, filename: str) -> Dict[str, object]:
     if not isinstance(parsed, dict):
         raise ValueError(f"AlignStats native report must be an object: {filename}")
     return parsed
-

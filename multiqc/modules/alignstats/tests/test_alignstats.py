@@ -45,3 +45,11 @@ def test_parse_native_report_requires_json_object() -> None:
 
     with pytest.raises(ValueError, match="must be an object"):
         parse_native_report("[1, 2]", "bad.alignstats.json")
+
+
+def test_parse_combo_tsv_rejects_duplicate_samples() -> None:
+    with pytest.raises(ValueError, match="Duplicate AlignStats sample"):
+        parse_combo_tsv(
+            "Sample\tMappedReadsPct\nHG003.sent\t99.1\nHG003.sent\t99.2\n",
+            "alignstats_combo_mqc.tsv",
+        )

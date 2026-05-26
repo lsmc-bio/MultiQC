@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import csv
 import logging
-from io import StringIO
-from typing import Dict, Iterable, List, Mapping, Tuple
+from typing import Dict, List, Mapping
 
 from multiqc.base_module import BaseMultiqcModule, ModuleNoSamplesFound
 from multiqc.plots import bargraph, table
 from multiqc.plots.table_object import ColumnDict
+
+from .parser import parse_sample_first_tsv
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class MultiqcModule(BaseMultiqcModule):
             parsed_rows = parse_sample_first_tsv(f["f"], f["fn"])
             for sample, row in parsed_rows.items():
                 rows[sample] = row
-                self.add_data_source(f, sample)
+                self.add_data_source(f, sample, section=section)
         return rows
 
     def _add_general_stats(self) -> None:
@@ -137,23 +137,6 @@ class MultiqcModule(BaseMultiqcModule):
         data = {sample: {key: to_number(row.get(key, 0)) for key in keys} for sample, row in rows.items()}
         cats = {key: {"name": pretty_name(key)} for key in keys}
         return bargraph.plot(data, cats, {"id": f"ultima_{section}_bar", "title": SECTION_NAMES[section]})
-
-
-def parse_sample_first_tsv(text: str | None, filename: str) -> Dict[str, Dict[str, object]]:
-    if text is None:
-        raise ValueError(f"Could not read Ultima TSV file: {filename}")
-    reader = csv.DictReader(StringIO(text), delimiter="\t")
-    if reader.fieldnames is None:
-        raise ValueError(f"Ultima TSV file has no header: {filename}")
-    if reader.fieldnames[0] != "Sample":
-        raise ValueError(f"Ultima TSV first column must be Sample: {filename}")
-    rows: Dict[str, Dict[str, object]] = {}
-    for row in reader:
-        sample = row["Sample"]
-        if sample in {"", "R1", "R2", "metrics"}:
-            raise ValueError(f"Unsafe Ultima Sample value in {filename}: {sample}")
-        rows[sample] = {key: value for key, value in row.items() if key != "Sample"}
-    return rows
 
 
 def table_headers(rows: Mapping[str, Mapping[str, object]]) -> Dict[str, ColumnDict]:

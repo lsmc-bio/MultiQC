@@ -34,6 +34,9 @@ def test_ultima_parser_requires_sample_first_column() -> None:
     with pytest.raises(ValueError, match="Unsafe Ultima Sample"):
         ultima_parser.parse_sample_first_tsv("Sample\trun_id\nR1\t602202\n", "ultima_run_inventory_mqc.tsv")
 
+    with pytest.raises(ValueError, match="Duplicate Ultima Sample"):
+        ultima_parser.parse_sample_first_tsv("Sample\trun_id\n602202\t602202\n602202\t602202\n", "ultima_run_inventory_mqc.tsv")
+
 
 def test_alignstats_parser_preserves_stat_family_columns() -> None:
     rows = alignstats_parser.parse_combo_tsv(
@@ -61,3 +64,5 @@ def test_alignstats_native_json_parser() -> None:
     with pytest.raises(ValueError, match="not valid JSON-like"):
         alignstats_parser.parse_native_report("WgsCoverageMean 31.2", "bad.alignstats.txt")
 
+    with pytest.raises(ValueError, match="Duplicate AlignStats sample"):
+        alignstats_parser.parse_combo_tsv("Sample\tMappedReadsPct\nHG003.sent\t99.1\nHG003.sent\t99.2\n", "alignstats_combo_mqc.tsv")

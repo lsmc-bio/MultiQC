@@ -73,7 +73,7 @@ def custom_module_classes() -> List[BaseMultiqcModule]:
                 ccdict = ccdict_by_id[cc_id]
                 if isinstance(ccdict.data, dict):
                     assert isinstance(ccdict.data, dict)
-                    ccdict.data.update(config_custom_data_item["data"])
+                    merge_custom_content_dict(cc_id, ccdict.data, config_custom_data_item["data"], "config custom_data")
                 else:
                     # HTML plot type doesn't have a data sample-id key, so just take the whole chunk of data
                     ccdict.data = config_custom_data_item["data"]
@@ -201,7 +201,7 @@ def custom_module_classes() -> List[BaseMultiqcModule]:
                         if sn not in parsed_item_with_clean_sn:
                             parsed_item_with_clean_sn[sn] = val_by_metric
                         else:
-                            parsed_item_with_clean_sn[sn].update(val_by_metric)
+                            raise ValueError(f"Duplicate sample name in custom content file '{f['fn']}': {sn}")
                     parsed_dict["data"] = parsed_item_with_clean_sn
 
                 _c_id = parsed_dict.get("id", config_custom_data_id)
@@ -211,7 +211,7 @@ def custom_module_classes() -> List[BaseMultiqcModule]:
                         ccdict_by_id[ModuleId(_c_id)] = CcDict()
                     _ccdict = ccdict_by_id[ModuleId(_c_id)]
                     if isinstance(parsed_item, dict) and isinstance(_ccdict.data, dict):
-                        _ccdict.data.update(parsed_item)
+                        merge_custom_content_dict(ModuleId(_c_id), _ccdict.data, parsed_item, f["fn"])
                     else:
                         _ccdict.data = parsed_item
                     assert isinstance(_ccdict.config, dict)
@@ -297,7 +297,7 @@ def custom_module_classes() -> List[BaseMultiqcModule]:
                             )
                             ccdict_by_id[c_id].data = parsed_item
                         else:
-                            d.update(parsed_item)
+                            merge_custom_content_dict(c_id, d, parsed_item, f["fn"])
                     assert isinstance(ccdict_by_id[c_id].config, dict)
                     ccdict_by_id[c_id].config.update(m_config)
 
@@ -430,6 +430,21 @@ def custom_module_classes() -> List[BaseMultiqcModule]:
             raise ModuleNoSamplesFound
 
     return sorted_modules
+
+
+def merge_custom_content_dict(
+    section_id: ModuleId,
+    existing_data: Dict[str, Any],
+    new_data: Mapping[str, Any],
+    source: str,
+) -> None:
+    duplicate_samples = sorted(set(existing_data).intersection(new_data))
+    if duplicate_samples:
+        raise ValueError(
+            f"Duplicate sample name(s) in custom content section '{section_id}' from {source}: "
+            f"{', '.join(duplicate_samples)}"
+        )
+    existing_data.update(new_data)
 
 
 class MultiqcModule(BaseMultiqcModule):

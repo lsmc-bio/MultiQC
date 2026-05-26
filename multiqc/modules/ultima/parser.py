@@ -18,6 +18,7 @@ def parse_sample_first_tsv(text: str | None, filename: str) -> Dict[str, Dict[st
         sample = row["Sample"]
         if sample in {"", "R1", "R2", "metrics"}:
             raise ValueError(f"Unsafe Ultima Sample value in {filename}: {sample}")
+        if sample in rows:
+            raise ValueError(f"Duplicate Ultima Sample value in {filename}: {sample}")
         rows[sample] = {key: value for key, value in row.items() if key != "Sample"}
     return rows
-
