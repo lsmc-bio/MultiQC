@@ -20,16 +20,15 @@ afterqc:
   contents: "allow_mismatch_in_poly"
   num_lines: 10000
 alignstats/combo:
-  fn:
-    - "alignstats_combo_mqc.tsv"
-    - "alignstats_combo_mqc.txt"
-    - "*alignstats_combo_mqc.tsv"
-    - "*alignstats_combo_mqc.txt"
+  - fn: "alignstats_combo_mqc.tsv"
+  - fn: "alignstats_combo_mqc.txt"
+  - fn: "*alignstats_combo_mqc.tsv"
+  - fn: "*alignstats_combo_mqc.txt"
 alignstats/json:
-  fn:
-    - "*.alignstats.json"
-    - "*.alignstats.txt"
-  contents: "WgsCoverageMean"
+  - fn: "*.alignstats.json"
+    contents: "WgsCoverageMean"
+  - fn: "*.alignstats.txt"
+    contents: "WgsCoverageMean"
 ultima/inventory:
   fn: "ultima_run_inventory_mqc.tsv"
 ultima/demux:
