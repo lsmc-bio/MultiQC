@@ -22,26 +22,27 @@ afterqc:
 alignstats/combo:
   - fn: "alignstats_combo_mqc.tsv"
   - fn: "alignstats_combo_mqc.txt"
+  - fn: "alignstats_gs_mqc.tsv"
   - fn: "*alignstats_combo_mqc.tsv"
   - fn: "*alignstats_combo_mqc.txt"
 alignstats/json:
   - fn: "*.alignstats.json"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: '^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
     num_lines: 500
   - fn: "*.alignstats.txt"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: '^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
     num_lines: 500
   - fn: "alignstats.json"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: '^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
     num_lines: 500
   - fn: "alignstats.txt"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: '^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
     num_lines: 500
   - fn: "report.json"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: '^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
     num_lines: 500
   - fn: "report.txt"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: '^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
     num_lines: 500
 ultima/inventory:
   fn: "ultima_run_inventory_mqc.tsv"
@@ -328,6 +329,20 @@ checkm2:
 checkqc:
   contents: "instrument_and_reagent_type"
   fn: "*.json"
+snakemake_benchmarks/combined:
+  - fn: "benchmarks.tsv"
+  - fn: "benchmarks_summary.tsv"
+  - fn: "rules_benchmark_data_mqc.tsv"
+snakemake_samples/samples:
+  - fn: "samples.tsv"
+  - fn: "input_samples_mqc.tsv"
+snakemake_samples/units:
+  - fn: "units.tsv"
+  - fn: "input_units_mqc.tsv"
+snakemake_samples/gender_checks:
+  fn: "reported_vs_inferred_sex_check_mqc.tsv"
+snakemake_samples/hybrid_qc:
+  fn: "hybrid_seq_batch_qc.tsv"
 custom_content:
   fn_re: '.+_mqc\.(yaml|yml|json|txt|csv|tsv|log|out|png|jpg|jpeg|gif|webp|tiff|html|md)'
 clipandmerge:

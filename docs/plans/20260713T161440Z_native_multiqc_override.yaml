@@ -1,0 +1,16 @@
+# Disable only legacy DayOA custom search keys that are now owned by native
+# modules in this unpublished MultiQC build. All other DayOA custom content is
+# retained from config/external_tools/multiqc_config.yaml.
+sp:
+  alignstats_combo:
+    fn: "__native_migrated_alignstats_combo_disabled__"
+  alignstats_gs:
+    fn: "__native_migrated_alignstats_gs_disabled__"
+  input_samples:
+    fn: "__native_migrated_input_samples_disabled__"
+  input_units:
+    fn: "__native_migrated_input_units_disabled__"
+  reported_vs_inferred_sex_check:
+    fn: "__native_migrated_reported_vs_inferred_sex_check_disabled__"
+  rules_benchmark_data:
+    fn: "__native_migrated_rules_benchmark_data_disabled__"

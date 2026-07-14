@@ -1,6 +1,7 @@
 """MultiQC submodule to parse output from Picard GcBiasMetrics"""
 
 import logging
+import os
 from typing import Dict
 
 from multiqc.modules.picard import util
@@ -24,11 +25,13 @@ def parse_reports(module):
 
     data_by_sample: Dict[str, Dict] = dict()
     summary_data_by_sample: Dict[str, Dict] = dict()
+    source_paths_by_sample: Dict[str, set[str]] = dict()
 
     # Go through logs and find Metrics
     for f in module.find_log_files("picard/gcbias", filehandles=True):
         # Sample name from input file name by default.
         s_name = f["s_name"]
+        file_samples: set[str] = set()
         gc_col = None
         cov_col = None
 
@@ -58,6 +61,7 @@ def parse_reports(module):
                     if s_name in data_by_sample:
                         log.debug(f"Duplicate sample name found in {f['fn']}! Overwriting: {s_name}")
                     data_by_sample[s_name] = dict()
+                    file_samples.add(s_name)
                     gc_col = keys.index("GC")
                     cov_col = keys.index("NORMALIZED_COVERAGE")
 
@@ -66,6 +70,7 @@ def parse_reports(module):
                     if s_name in summary_data_by_sample:
                         log.debug(f"Duplicate sample name found in {f['fn']}! Overwriting: {s_name}")
                     summary_data_by_sample[s_name] = dict()
+                    file_samples.add(s_name)
                     vals = f["f"].readline().rstrip("\n").split("\t")
                     if len(keys) != len(vals):
                         s_name = None
@@ -86,8 +91,15 @@ def parse_reports(module):
                     gc_col = None
                     cov_col = None
 
-        for s_name in set(data_by_sample.keys()) | set(summary_data_by_sample.keys()):
-            module.add_data_source(f, s_name, section="GcBiasMetrics")
+        source_path = os.path.join(f["root"], f["fn"])
+        for parsed_sample in file_samples:
+            source_paths_by_sample.setdefault(parsed_sample, set()).add(source_path)
+
+    for parsed_sample in sorted(set(data_by_sample) | set(summary_data_by_sample)):
+        paths = sorted(source_paths_by_sample.get(parsed_sample, set()))
+        if not paths:
+            raise AssertionError(f"Picard GC bias sample has no source paths: {parsed_sample}")
+        module.add_data_source(s_name=parsed_sample, path=paths[0], section="GcBiasMetrics")
 
     for s_name in list(data_by_sample.keys()):
         if len(data_by_sample[s_name]) == 0:

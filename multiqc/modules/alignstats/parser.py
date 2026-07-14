@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 import csv
 import json
 from io import StringIO
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional, Union, cast
+
+AlignstatsValue = Union[int, float, str, bool, None]
 
 NATIVE_MARKER_KEYS = {
     "MappedReads",
@@ -19,7 +19,7 @@ NATIVE_MARKER_KEYS = {
 GENERIC_NATIVE_FILENAMES = {"report.json", "report.txt", "alignstats.json", "alignstats.txt"}
 
 
-def parse_combo_tsv(text: str | None, filename: str) -> Dict[str, Dict[str, object]]:
+def parse_combo_tsv(text: Optional[str], filename: str) -> Dict[str, Dict[str, AlignstatsValue]]:
     if text is None:
         raise ValueError(f"Could not read AlignStats TSV: {filename}")
     reader = csv.DictReader(StringIO(text), delimiter="\t")
@@ -28,7 +28,7 @@ def parse_combo_tsv(text: str | None, filename: str) -> Dict[str, Dict[str, obje
     sample_field = "Sample" if "Sample" in reader.fieldnames else "sample" if "sample" in reader.fieldnames else ""
     if not sample_field:
         raise ValueError(f"AlignStats TSV requires Sample or sample column: {filename}")
-    rows: Dict[str, Dict[str, object]] = {}
+    rows: Dict[str, Dict[str, AlignstatsValue]] = {}
     for row in reader:
         sample = row[sample_field]
         if not sample:
@@ -43,7 +43,7 @@ def parse_combo_tsv(text: str | None, filename: str) -> Dict[str, Dict[str, obje
     return rows
 
 
-def parse_native_report(text: str | None, filename: str) -> Dict[str, object]:
+def parse_native_report(text: Optional[str], filename: str) -> Dict[str, AlignstatsValue]:
     if text is None:
         raise ValueError(f"Could not read AlignStats report: {filename}")
     try:
@@ -54,10 +54,13 @@ def parse_native_report(text: str | None, filename: str) -> Dict[str, object]:
         raise ValueError(f"AlignStats native report must be an object: {filename}")
     if not NATIVE_MARKER_KEYS.intersection(parsed):
         raise ValueError(f"AlignStats native report does not contain recognized AlignStats metrics: {filename}")
-    return parsed
+    nested = sorted(key for key, value in parsed.items() if not isinstance(value, (int, float, str, bool, type(None))))
+    if nested:
+        raise ValueError(f"AlignStats native report contains non-scalar field(s) {', '.join(nested)}: {filename}")
+    return cast(Dict[str, AlignstatsValue], parsed)
 
 
-def native_sample_name(filename: str, root: str | None, fallback: str) -> str:
+def native_sample_name(filename: str, root: Optional[str], fallback: str) -> str:
     if filename.endswith(".alignstats.json"):
         sample = filename[: -len(".alignstats.json")]
     elif filename.endswith(".alignstats.txt"):

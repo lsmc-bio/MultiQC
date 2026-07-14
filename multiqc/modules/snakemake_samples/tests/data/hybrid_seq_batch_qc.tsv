@@ -1,0 +1,3 @@
+schema_version	analysis_unit_uid	sample_id	contamination_estimate_pct	contamination_max_pct	short_read_coverage_threshold	short_read_bases_above_threshold_pct	short_read_bases_above_threshold_pct_min	long_read_mean_coverage	long_read_mean_coverage_min	long_read_target_10x_pct	long_read_target_10x_pct_min	short_read_target_coverage_threshold	short_read_target_below_threshold_pct	short_read_target_below_threshold_pct_max	hybrid_callable_target_snvs_pct	hybrid_callable_target_snvs_pct_min	coverage_uniformity	coverage_uniformity_min	coverage_uniformity_max	expected_relative_matches	detected_relative_matches
+1	lib-pass	S1	1.0	2.0	30	95	90	15	10	90	80	20	2	5	99	95	0.9	0.8	1.2	2	2
+1	lib-fail	S2	3.0	2.0	30	95	90	15	10	90	80	20	2	5	99	95	0.9	0.8	1.2	2	1

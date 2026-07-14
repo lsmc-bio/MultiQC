@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import importlib.util
 from pathlib import Path
 
@@ -72,18 +70,70 @@ def test_module_autodetects_generic_native_report(tmp_path: Path) -> None:
     sample_dir = tmp_path / "HG003"
     sample_dir.mkdir()
     (sample_dir / "report.txt").write_text(
-        '{\n'
+        "{\n"
         '    "InputFile": "HG003.bam",\n'
         '    "MappedReads": 100,\n'
         '    "MappedReadsPct": 99.1,\n'
         '    "WgsCoverageMean": 31.2\n'
-        '}\n'
+        "}\n"
     )
 
-    report.analysis_files = [tmp_path]
+    report.analysis_files = [str(tmp_path)]
     report.search_files(["alignstats"])
 
     from multiqc.modules.alignstats.alignstats import MultiqcModule
 
     module = MultiqcModule()
     assert module.alignstats_data["HG003"]["WgsCoverageMean"] == 31.2
+
+
+def test_module_deduplicates_identical_combined_inputs(tmp_path: Path) -> None:
+    contents = "Sample\tMappedReadsPct\tWgsCoverageMean\nHG003\t99.1\t31.2\n"
+    (tmp_path / "one_alignstats_combo_mqc.tsv").write_text(contents)
+    (tmp_path / "two_alignstats_combo_mqc.tsv").write_text(contents)
+    (tmp_path / "alignstats_gs_mqc.tsv").write_text(contents)
+
+    reset()
+    report.analysis_files = [str(tmp_path)]
+    report.search_files(["alignstats"])
+
+    from multiqc.modules.alignstats.alignstats import MultiqcModule
+
+    module = MultiqcModule()
+    assert module.alignstats_data == {"HG003": {"MappedReadsPct": "99.1", "WgsCoverageMean": "31.2"}}
+
+
+def test_module_reconciles_combined_and_native_metrics(tmp_path: Path) -> None:
+    (tmp_path / "alignstats_combo_mqc.tsv").write_text("Sample\tMappedReadsPct\tWgsCoverageMean\nHG003\t99.10\t31.2\n")
+    (tmp_path / "HG003.alignstats.json").write_text(
+        '{"MappedReads": 100, "MappedReadsPct": 99.1, "WgsCoverageMean": 31.20, "WgsCoverageMedian": 31}'
+    )
+
+    reset()
+    report.analysis_files = [str(tmp_path)]
+    report.search_files(["alignstats"])
+
+    from multiqc.modules.alignstats.alignstats import MultiqcModule
+
+    module = MultiqcModule()
+    assert module.alignstats_data["HG003"]["MappedReadsPct"] == "99.10"
+    assert module.alignstats_data["HG003"]["MappedReads"] == 100
+    assert module.alignstats_data["HG003"]["WgsCoverageMedian"] == 31
+
+
+def test_module_rejects_conflicting_combined_and_native_metrics_with_paths(tmp_path: Path) -> None:
+    (tmp_path / "alignstats_combo_mqc.tsv").write_text("Sample\tMappedReadsPct\nHG003\t99.1\n")
+    (tmp_path / "HG003.alignstats.json").write_text('{"MappedReads": 100, "MappedReadsPct": 98.0}')
+
+    reset()
+    report.analysis_files = [str(tmp_path)]
+    report.search_files(["alignstats"])
+
+    from multiqc.modules.alignstats.alignstats import MultiqcModule
+
+    with pytest.raises(ValueError) as exc_info:
+        MultiqcModule()
+    message = str(exc_info.value)
+    assert "MappedReadsPct" in message
+    assert "alignstats_combo_mqc.tsv" in message
+    assert "HG003.alignstats.json" in message

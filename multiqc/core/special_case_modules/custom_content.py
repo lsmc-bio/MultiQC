@@ -106,6 +106,7 @@ def custom_module_classes() -> List[BaseMultiqcModule]:
         mod_cust_config[cc_id] = config_custom_data_item
 
     bm: BaseMultiqcModule = BaseMultiqcModule(name="Custom content", anchor=Anchor("custom_content"))
+    bm.mod_cust_config = getattr(custom_module_classes, "mod_cust_config", {})
 
     # Now go through each of the file search patterns
     for config_custom_data_id in search_pattern_keys:

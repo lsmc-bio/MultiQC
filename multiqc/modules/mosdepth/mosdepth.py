@@ -482,7 +482,7 @@ class MultiqcModule(BaseMultiqcModule):
             if s_name in cumulative_pct_by_cov_by_sample:  # both region and global might exist, prioritizing region
                 continue
 
-            self.add_data_source(f, s_name=s_name, section="genome_results")
+            self.add_data_source(f, s_name=s_name, section=f"genome_results:{scope}")
 
             bases_fraction_sum_per_contig: Dict[str, float] = defaultdict(float)
             cum_fraction_by_cov: Dict[int, float] = dict()

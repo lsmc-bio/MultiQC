@@ -64,7 +64,7 @@ def read_histogram(module, program_key, headers, formats, picard_tool, sentieon_
                 log.debug(f"Duplicate sample name found in {f['fn']}! Overwriting: {s_name}")
             all_data[s_name] = sample_data
 
-            module.add_data_source(f, s_name, section="Histogram")
+            module.add_data_source(f, s_name, section=f"Histogram:{program_key}:{picard_tool}")
             # Superfluous function call to confirm that it is used in this module
             # Replace None with actual version if it is available
             module.add_software_version(None, s_name)

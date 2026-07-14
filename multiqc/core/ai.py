@@ -492,6 +492,11 @@ class AWSBedrockClient(Client):
     def __init__(self):
         super().__init__()
 
+        if not config.ai_model:
+            raise ValueError(
+                "config.ai_provider is set to 'aws_bedrock', but no config.ai_model is provided. "
+                "Set config.ai_model to the exact Bedrock model ID."
+            )
         self.model = config.ai_model
         self.name = "aws_bedrock"
         self.title = "AWS Bedrock"
@@ -733,7 +738,7 @@ def _check_bedrock_availability() -> Tuple[bool, Optional[str]]:
             return False, f"Error creating Bedrock client: {e}"
 
 
-def _auto_detect_provider() -> Optional[str]:
+def _auto_detect_provider() -> Optional[config_schema.AiProviderLiteral]:
     """
     Auto-detect AI provider based on available environment variables.
 
