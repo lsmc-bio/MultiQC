@@ -1,0 +1,3 @@
+"Sample"	"reported_sex_raw"	"inferred_sex_chromosome_complement"	"comparison_status"	"comparison_pass"
+"S1"	"female"	"XX"	"PASS"	"true"
+"S2"	"male"	"XX"	"FAIL"	"false"

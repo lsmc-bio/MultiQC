@@ -1265,6 +1265,12 @@ class BaseMultiqcModule:
             return
         if path is None and f is not None:
             path = os.path.abspath(os.path.join(f["root"], f["fn"]))
+        existing_path = report.data_sources[module][section].get(s_name)
+        if existing_path is not None and existing_path != str(path):
+            raise ValueError(
+                f"Duplicate sample name for module '{module}', section '{section}': "
+                f"{s_name!r} is already sourced from {existing_path}, cannot also use {path}"
+            )
         report.data_sources[module][section][s_name] = str(path)
 
     def add_software_version(

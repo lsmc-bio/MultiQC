@@ -151,7 +151,9 @@ window.initExport = function () {
             } else if (format === "tsv" || format === "csv") {
               let plot = mqc_plots[target];
               if (plot !== undefined) {
-                let text = plot.exportData(format);
+                let text = window.dayoaWithSelectorsSuspended
+                  ? window.dayoaWithSelectorsSuspended(() => plot.exportData(format))
+                  : plot.exportData(format);
                 const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
                 if (checked_plots.length <= zip_threshold) {
                   // Not many plots to export, just trigger a download for each

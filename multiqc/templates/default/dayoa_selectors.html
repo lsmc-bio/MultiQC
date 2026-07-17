@@ -1,0 +1,40 @@
+{# DayOA report selector controls render only when a validated manifest is configured. #}
+{% if config.dayoa_report_selectors is not none %}
+  <section id="dayoa-selector-panel" class="dayoa-selector-panel evidence-card d-print-none" aria-labelledby="dayoa-selector-title">
+    <div class="dayoa-selector-heading">
+      <div>
+        <div class="dayoa-selector-eyebrow">Display scope</div>
+        <h2 id="dayoa-selector-title">Explore exact analysis units</h2>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="dayoa-selector-clear">Clear filters</button>
+    </div>
+
+    <div class="dayoa-modality-control" role="group" aria-label="Display modality">
+      <button type="button" class="btn dayoa-modality-button active" data-modality="all" aria-pressed="true">All</button>
+      <button type="button" class="btn dayoa-modality-button" data-modality="sr" aria-pressed="false">SR only</button>
+      <button type="button" class="btn dayoa-modality-button" data-modality="lr" aria-pressed="false">LR only</button>
+      <button type="button" class="btn dayoa-modality-button" data-modality="hybrid" aria-pressed="false">Hybrid only</button>
+    </div>
+
+    <div class="dayoa-identity-controls">
+      {% for dimension, label in [('specimen', 'Specimens'), ('sample', 'Samples'), ('library', 'Libraries')] %}
+        <div class="dayoa-identity-control" data-identity-dimension="{{ dimension }}">
+          <label for="dayoa-{{ dimension }}-search">{{ label }}</label>
+          <input
+            id="dayoa-{{ dimension }}-search"
+            type="search"
+            class="form-control form-control-sm dayoa-identity-search"
+            placeholder="Search exact ID or EUID"
+            autocomplete="off"
+          />
+          <div class="dayoa-identity-chip-list" role="group" aria-label="Select {{ label | lower }}"></div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="dayoa-selector-footer">
+      <span id="dayoa-selector-status" role="status" aria-live="polite"></span>
+      <span>Display filters do not alter downloaded data.</span>
+    </div>
+  </section>
+{% endif %}

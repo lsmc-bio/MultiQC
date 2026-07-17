@@ -11,7 +11,14 @@ specified in __init__.py, eg:
 template_fn = 'base.html'
 
 #}<!doctype html>
-<html lang="en">
+<html
+  lang="en"
+  data-theme="{{ config.lsmc_default_theme }}"
+  data-bs-theme="{{ 'dark' if config.lsmc_default_theme in ['lsmc', 'dark'] else 'light' }}"
+  data-lsmc-service="{{ config.lsmc_service }}"
+  data-lsmc-environment="{{ config.lsmc_environment }}"
+  data-allow-tacky="{{ 'true' if config.lsmc_allow_tacky else 'false' }}"
+>
   <head>
     <!--
   __  __       _ _   _  ___   ____
@@ -34,6 +41,7 @@ http://multiqc.info
     <div class="mainpage">
       <div class="p-4 pe-5">
         {% include 'header.html' %}
+        {% include 'dayoa_selectors.html' %}
         {% include 'general_stats.html' %}
         {% include 'content.html' %}
       </div>

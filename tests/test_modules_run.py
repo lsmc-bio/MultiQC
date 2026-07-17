@@ -120,6 +120,21 @@ def test_write_data_file(monkeypatch, tmp_path, config_options, expected_to_writ
         assert not expected_path.exists()
 
 
+def test_add_data_source_rejects_duplicate_sample_different_paths(tmp_path):
+    reset()
+    module = BaseMultiqcModule(name="Duplicate Test", anchor="duplicate_test")
+    first = tmp_path / "first.txt"
+    second = tmp_path / "second.txt"
+    first.write_text("first\n")
+    second.write_text("second\n")
+
+    module.add_data_source(s_name="SampleA", path=first, module="duplicate_test", section="metrics")
+    module.add_data_source(s_name="SampleA", path=first, module="duplicate_test", section="metrics")
+
+    with pytest.raises(ValueError, match="Duplicate sample name"):
+        module.add_data_source(s_name="SampleA", path=second, module="duplicate_test", section="metrics")
+
+
 @pytest.mark.parametrize(
     "use_filename_as_sample_name,fn_clean_sample_names,prepend_dirs,expected_sample_name",
     [

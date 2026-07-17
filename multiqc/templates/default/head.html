@@ -18,6 +18,11 @@ page contents, it's machine-readable tags for browsers and search engines.
 <!-- JSON plot data -->
 <script type="text/plain" id="mqc_compressed_plotdata">{{ report.plot_compressed_json }}</script>
 
+{% if config.dayoa_report_selectors is not none %}
+  {% set dayoa_selector_manifest = load_dayoa_selector_manifest(config.dayoa_report_selectors) %}
+  <script type="application/json" id="dayoa_report_selectors">{{ dayoa_selector_manifest | tojson }}</script>
+{% endif %}
+
 <script type="application/json" id="mqc_config">{{
 {
     "plots_num_data_points_do_not_automatically_load": config.plots_defer_loading_numseries,
@@ -32,6 +37,10 @@ page contents, it's machine-readable tags for browsers and search engines.
     "thousandsSep_format": config.thousandsSep_format,
     "boxplot_boxpoints": config.boxplot_boxpoints,
     "template_dark_mode": config.template_dark_mode,
+    "lsmc_default_theme": config.lsmc_default_theme,
+    "lsmc_service": config.lsmc_service,
+    "lsmc_environment": config.lsmc_environment,
+    "lsmc_allow_tacky": config.lsmc_allow_tacky,
 } | tojson
 }}</script>
 

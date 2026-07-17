@@ -28,6 +28,22 @@ it prints the contents of these files into the report.
 
 <!-- Include CSS -->
 <style type="text/css">
+  @font-face {
+    font-family: "Nunito Sans";
+    font-style: normal;
+    font-weight: 200 1000;
+    font-display: swap;
+    src: url("data:font/woff2;base64,{{ include_file('assets/fonts/NunitoSans-LSMC.woff2', b64=True) }}") format("woff2");
+  }
+  @font-face {
+    font-family: "Source Serif 4";
+    font-style: normal;
+    font-weight: 200 900;
+    font-display: swap;
+    src: url("data:font/woff2;base64,{{ include_file('assets/fonts/SourceSerif4-LSMC.woff2', b64=True) }}") format("woff2");
+  }
+</style>
+<style type="text/css">
     {{ include_file('compiled/css/multiqc.min.css') }}
 </style>
 {% for css_href in config.custom_css_files %}

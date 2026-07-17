@@ -3,6 +3,7 @@ import logging
 import random
 from collections import defaultdict
 from math import isinf, isnan
+from pathlib import Path
 
 import spectra
 
@@ -41,16 +42,40 @@ class MultiqcModule(BaseMultiqcModule):
         self.somalier_length_exp = dict()
         self.somalier_length_obsexp = dict()
 
-        # parse somalier sample file
+        # Parse Somalier sample files. A biological sample can legitimately have
+        # separate Somalier measurements for multiple assays (for example, SR and
+        # LR alignments). Resolve all files together so those measurements are
+        # represented explicitly instead of depending on discovery order.
+        sample_records = []
         for f in self.find_log_files("somalier/samples"):
             parsed_data = self.parse_somalier_samples(f)
             if parsed_data is not None:
                 for s_name_raw in parsed_data:
                     s_name = "*".join([self.clean_s_name(s, f) for s in s_name_raw.split("*")])
-                    if s_name in self.somalier_data.keys():
-                        log.debug(f"Duplicate sample name found! Overwriting: {s_name}")
-                    self.add_data_source(f, s_name)
-                    self.somalier_data[s_name] = parsed_data[s_name_raw]
+                    sample_records.append((s_name, s_name_raw, f, parsed_data[s_name_raw]))
+
+        records_by_sample = defaultdict(list)
+        for record in sample_records:
+            records_by_sample[record[0]].append(record)
+
+        for s_name, records in records_by_sample.items():
+            if len(records) == 1:
+                _, _, f, data = records[0]
+                self.add_data_source(f, s_name, section="samples")
+                self.somalier_data[s_name] = data
+                continue
+
+            qualified_names = set()
+            for _, s_name_raw, f, data in records:
+                source_label = self.somalier_source_label(f["fn"], s_name_raw)
+                qualified_name = f"{s_name} [{source_label}]"
+                if qualified_name in qualified_names:
+                    raise ValueError(
+                        f"Ambiguous Somalier assay label for sample {s_name!r}: {source_label!r}"
+                    )
+                qualified_names.add(qualified_name)
+                self.add_data_source(f, qualified_name, section="samples")
+                self.somalier_data[qualified_name] = data
 
         # parse somalier CSV files
         for f in self.find_log_files("somalier/pairs"):
@@ -99,6 +124,16 @@ class MultiqcModule(BaseMultiqcModule):
 
         # Write parsed report data to a file
         self.write_data_file(self.somalier_data, "multiqc_somalier")
+
+    @staticmethod
+    def somalier_source_label(filename: str, sample_name: str) -> str:
+        suffix = ".somalier.samples.tsv"
+        source_stem = Path(filename).name
+        if not source_stem.endswith(suffix):
+            raise ValueError(f"Unexpected Somalier samples filename: {filename}")
+        source_stem = source_stem[: -len(suffix)]
+        sample_prefix = f"{sample_name}."
+        return source_stem[len(sample_prefix) :] if source_stem.startswith(sample_prefix) else source_stem
 
     @staticmethod
     def parse_somalier_samples(f):

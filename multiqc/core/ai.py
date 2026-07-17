@@ -20,8 +20,13 @@ from multiqc.utils import config_schema
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_OPENAI_MODEL = "gpt-5.5"
+GPT55_CONTEXT_WINDOW = 1_050_000
+
 # List of known reasoning models
 REASONING_MODELS = {
+    # GPT-5 family reasoning models
+    "gpt-5",
     # OpenAI reasoning models
     "o1",
     "o1-preview",
@@ -317,13 +322,16 @@ class OpenAiClient(Client):
             self.title = endpoint
         else:
             self.endpoint = "https://api.openai.com/v1/chat/completions"
-            self.model = config.ai_model or "gpt-4o"
+            self.model = config.ai_model or DEFAULT_OPENAI_MODEL
             self.name = "openai"
             self.title = "OpenAI"
 
     def max_tokens(self) -> int:
         if config.ai_custom_context_window:
             return config.ai_custom_context_window
+
+        if self.model.startswith("gpt-5.5"):
+            return GPT55_CONTEXT_WINDOW
 
         # Reasoning models have different context windows
         if is_reasoning_model(self.model):
@@ -484,6 +492,11 @@ class AWSBedrockClient(Client):
     def __init__(self):
         super().__init__()
 
+        if not config.ai_model:
+            raise ValueError(
+                "config.ai_provider is set to 'aws_bedrock', but no config.ai_model is provided. "
+                "Set config.ai_model to the exact Bedrock model ID."
+            )
         self.model = config.ai_model
         self.name = "aws_bedrock"
         self.title = "AWS Bedrock"
@@ -554,7 +567,7 @@ class SeqeraClient(Client):
         self, prompt: str, report_content: str, extra_options: Optional[Dict[str, Any]] = None
     ) -> ApiResponse:
         response = self._request_with_error_handling_and_retries(
-            f"{config.seqera_api_url}/internal-ai/query",
+            f"{config.seqera_api_url}/internal-ai/report-summary",
             headers={"Authorization": f"Bearer {self.api_key}"},
             body={
                 "message": self.wrap_details(prompt + "\n\n" + report_content),
@@ -725,7 +738,7 @@ def _check_bedrock_availability() -> Tuple[bool, Optional[str]]:
             return False, f"Error creating Bedrock client: {e}"
 
 
-def _auto_detect_provider() -> Optional[str]:
+def _auto_detect_provider() -> Optional[config_schema.AiProviderLiteral]:
     """
     Auto-detect AI provider based on available environment variables.
 

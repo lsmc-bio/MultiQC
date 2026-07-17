@@ -8,6 +8,8 @@ function handleStreamError(error) {
 function isReasoningModel(model) {
   if (!model) return false;
   const reasoningModels = [
+    // GPT-5 family reasoning models
+    "gpt-5",
     // OpenAI reasoning models
     "o1",
     "o1-preview",
@@ -195,7 +197,7 @@ function runStreamGeneration({
       title: title,
     });
 
-    fetch(`${seqeraApiUrl}/internal-ai/query`, fetchOptions)
+    fetch(`${seqeraApiUrl}/internal-ai/report-summary`, fetchOptions)
       .then((response) => {
         if (!response.ok) {
           return response.json().then((errorData) => {

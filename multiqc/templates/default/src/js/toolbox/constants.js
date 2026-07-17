@@ -31,8 +31,8 @@ window.AI_PROVIDERS = {
   },
   openai: {
     name: "OpenAI",
-    defaultModel: "gpt-4o",
-    suggestedModels: ["gpt-4o", "gpt-4o-mini"],
+    defaultModel: "gpt-5.5",
+    suggestedModels: ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"],
     apiKeysUrl: "https://platform.openai.com/api-keys",
     modelsUrl: "https://platform.openai.com/docs/models",
   },

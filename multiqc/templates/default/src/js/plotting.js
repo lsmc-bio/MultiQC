@@ -223,7 +223,7 @@ window.callAfterDecompressed.push(function (mqc_plotdata) {
   });
 
   // Replot graphs when something changed in filters
-  $(document).on("mqc_highlights mqc_renamesamples mqc_hidesamples", function () {
+  $(document).on("mqc_highlights mqc_renamesamples mqc_hidesamples dayoa_selector_filter", function () {
     // Replot graphs
     $(".hc-plot:not(.not_rendered)").each(function () {
       renderPlot($(this).attr("id"));
@@ -354,6 +354,13 @@ class Sample {
 function applyToolboxSettings(samples, plotAnchor) {
   // init object with default values, apply pseudonymization
   let objects = samples.map((name) => new Sample(name));
+
+  // DayOA selectors operate on the exact, original MultiQCAnalysisID.
+  if (window.dayoa_selector_allowed_ids !== null && window.dayoa_selector_allowed_ids !== undefined) {
+    objects.forEach((obj) => {
+      if (!window.dayoa_selector_allowed_ids.has(obj.originalName)) obj.hidden = true;
+    });
+  }
 
   // Rename samples
   if (window.mqc_rename_f_texts.length > 0) {

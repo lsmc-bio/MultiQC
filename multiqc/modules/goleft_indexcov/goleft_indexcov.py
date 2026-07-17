@@ -70,7 +70,11 @@ class MultiqcModule(BaseMultiqcModule):
                             if not self.is_ignore_sample(sample):
                                 one_file_data[chrom][sample][cov] = val
             if one_file_data:
-                self.add_data_source(f)
+                file_samples = sorted(
+                    {sample for chrom_data in one_file_data.values() for sample in chrom_data}
+                )
+                for sample in file_samples:
+                    self.add_data_source(f, s_name=sample, section="roc")
                 for chrom, chrom_data in one_file_data.items():
                     for sn, sample_data in chrom_data.items():
                         for k, v in sample_data.items():
@@ -89,8 +93,10 @@ class MultiqcModule(BaseMultiqcModule):
         bin_plot_data = {}
         bin_plot_data_empty_samples = []
         for f in self.find_log_files("goleft_indexcov/ped", filehandles=True):
+            samples_before = set(bin_plot_data)
             self.parse_bin_plot_data(f, bin_plot_data, bin_plot_data_empty_samples)
-            self.add_data_source(f)
+            for sample in sorted(set(bin_plot_data) - samples_before):
+                self.add_data_source(f, s_name=sample, section="ped")
 
         # Filter to strip out ignored sample names
         bin_plot_data = self.ignore_samples(bin_plot_data)

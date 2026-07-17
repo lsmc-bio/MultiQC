@@ -435,6 +435,33 @@ def test_from_tsv(tmp_path, section_name, is_good, contents):
         assert plot.layout.title.text == id.title()  # type: ignore[attr-defined]
 
 
+def test_custom_content_rejects_duplicate_samples(tmp_path):
+    os.chdir(tmp_path)
+    (tmp_path / "first_mqc.tsv").write_text(
+        """\
+#id: dupsection
+#plot_type: table
+Sample\tvalue
+S1\t1
+"""
+    )
+    (tmp_path / "second_mqc.tsv").write_text(
+        """\
+#id: dupsection
+#plot_type: table
+Sample\tvalue
+S1\t2
+"""
+    )
+
+    report.analysis_files = [tmp_path]
+    update_config(cfg=ClConfig(run_modules=["custom_content"]))
+    file_search()
+
+    with pytest.raises(ValueError, match="Duplicate sample name"):
+        custom_module_classes()
+
+
 def test_heatmap_with_numerical_cats(tmp_path):
     os.chdir(tmp_path)
 

@@ -1,6 +1,7 @@
 """MultiQC module to parse output from ganon classify"""
 
 import logging
+import os
 import re
 from typing import Dict, Optional, Tuple, Union
 
@@ -25,20 +26,27 @@ class MultiqcModule(BaseMultiqcModule):
         )
 
         data_by_sample: Dict[str, Dict[str, Union[str, int, float, None]]] = dict()
+        source_paths_by_sample: Dict[str, list[str]] = dict()
         for f in self.find_log_files("ganon"):
             s_name, data = self.parse_log(f)
             if not s_name:
                 log.error(f"Could not parse sample name from supposedly ganon log file: {f['fn']}")
                 continue
             if s_name in data_by_sample:
-                log.debug(f"Duplicate sample name found! Overwriting: {s_name}")
-            data_by_sample[s_name] = data
+                if data_by_sample[s_name] != data:
+                    paths = sorted([*source_paths_by_sample[s_name], os.path.join(f["root"], f["fn"])])
+                    raise ValueError(f"Conflicting Ganon inputs for sample '{s_name}': {', '.join(paths)}")
+            else:
+                data_by_sample[s_name] = data
+            source_paths_by_sample.setdefault(s_name, []).append(os.path.join(f["root"], f["fn"]))
 
         self.calculate_entry_remainder(data_by_sample)
 
         data_by_sample = self.ignore_samples(data_by_sample)
         if len(data_by_sample) == 0:
             raise ModuleNoSamplesFound
+        for s_name in sorted(data_by_sample):
+            self.add_data_source(s_name=s_name, path=sorted(source_paths_by_sample[s_name])[0])
         log.info(f"Found {len(data_by_sample)} reports")
         self.write_data_file(data_by_sample, "ganon")
 
@@ -65,12 +73,10 @@ class MultiqcModule(BaseMultiqcModule):
                     if s_name is not None:
                         log.debug(f"Duplicate sample name found within the same file {f['fn']}! Overwriting: {s_name}")
                     s_name = self.clean_s_name(line.split()[1], f)
-                    self.add_data_source(f, s_name=s_name)
                     continue
 
                 if line.startswith("Ganon report output found:"):
                     s_name = self.clean_s_name(line.split(":")[1], f)
-                    self.add_data_source(f, s_name=s_name)
                     continue
 
             if line.startswith("ganon-classify processed"):

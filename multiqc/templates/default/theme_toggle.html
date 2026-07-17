@@ -14,9 +14,9 @@ Theme toggle dropdown component.
     id="bd-theme"
     data-bs-toggle="dropdown"
     aria-expanded="false"
-    aria-label="Toggle theme (auto)"
+    aria-label="Toggle theme"
   >
-    <span class="theme-icon-active align-text-bottom">{{ material_icon('mdi:circle-half-full', 16) }}</span>
+    <span class="theme-icon-active align-text-bottom">{{ material_icon('mdi:equalizer', 16) }}</span>
     <span id="bd-theme-text" class="visually-hidden">Theme</span>
   </button>
   <ul class="dropdown-menu" aria-labelledby="bd-theme">
@@ -24,11 +24,11 @@ Theme toggle dropdown component.
       <button
         type="button"
         class="dropdown-item d-flex align-items-center"
-        data-bs-theme-value="light"
+        data-theme-value="original"
         aria-pressed="false"
       >
-        <span class="me-2">{{ material_icon('mdi:weather-sunny', 16) }}</span>
-        Light
+        <span class="me-2">{{ material_icon('mdi:circle-half-full', 16) }}</span>
+        Original
         <span class="ms-auto check-icon d-none">{{ material_icon('mdi:check', 16) }}</span>
       </button>
     </li>
@@ -36,7 +36,19 @@ Theme toggle dropdown component.
       <button
         type="button"
         class="dropdown-item d-flex align-items-center"
-        data-bs-theme-value="dark"
+        data-theme-value="lsmc"
+        aria-pressed="false"
+      >
+        <span class="me-2">{{ material_icon('mdi:equalizer', 16) }}</span>
+        LSMC
+        <span class="ms-auto check-icon d-none">{{ material_icon('mdi:check', 16) }}</span>
+      </button>
+    </li>
+    <li>
+      <button
+        type="button"
+        class="dropdown-item d-flex align-items-center"
+        data-theme-value="dark"
         aria-pressed="false"
       >
         <span class="me-2">{{ material_icon('mdi:weather-night', 16) }}</span>
@@ -45,16 +57,27 @@ Theme toggle dropdown component.
       </button>
     </li>
     <li>
-      <button
-        type="button"
-        class="dropdown-item d-flex align-items-center active"
-        data-bs-theme-value="auto"
-        aria-pressed="true"
-      >
-        <span class="me-2">{{ material_icon('mdi:circle-half-full', 16) }}</span>
-        Auto
+      <button type="button" class="dropdown-item d-flex align-items-center" data-theme-value="light" aria-pressed="false">
+        <span class="me-2">{{ material_icon('mdi:weather-sunny', 16) }}</span>
+        Light
         <span class="ms-auto check-icon d-none">{{ material_icon('mdi:check', 16) }}</span>
       </button>
     </li>
+    <li>
+      <button type="button" class="dropdown-item d-flex align-items-center" data-theme-value="nosee" aria-pressed="false">
+        <span class="me-2">{{ material_icon('mdi:eye', 16) }}</span>
+        NoSee
+        <span class="ms-auto check-icon d-none">{{ material_icon('mdi:check', 16) }}</span>
+      </button>
+    </li>
+    {% if config.lsmc_allow_tacky or config.lsmc_environment not in ['prod', 'production', 'clinical'] %}
+      <li>
+        <button type="button" class="dropdown-item d-flex align-items-center" data-theme-value="tacky" aria-pressed="false">
+          <span class="me-2">{{ material_icon('mdi:star', 16) }}</span>
+          Tacky
+          <span class="ms-auto check-icon d-none">{{ material_icon('mdi:check', 16) }}</span>
+        </button>
+      </li>
+    {% endif %}
   </ul>
 </div>
