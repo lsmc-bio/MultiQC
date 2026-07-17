@@ -2146,7 +2146,7 @@
       </div>
 
       <footer class="page-footer">
-        Generated on <time datetime="2026-05-26">2026-05-26</time> for MultiQC
+        Generated on <time datetime="2026-07-17">2026-07-17</time> for MultiQC
         <code>1.36.dev0</code>.
       </footer>
     </main>
@@ -2301,6 +2301,71 @@
                                 "enum": null,
                                 "items_enum": null,
                                 "examples": []
+                        },
+                        "lsmc_default_theme": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "Initial LSMC report theme. The original theme preserves the upstream MultiQC presentation.",
+                                "default": "lsmc",
+                                "enum": [
+                                        "original",
+                                        "lsmc",
+                                        "dark",
+                                        "light",
+                                        "nosee",
+                                        "tacky"
+                                ],
+                                "items_enum": null,
+                                "examples": [
+                                        "lsmc"
+                                ]
+                        },
+                        "lsmc_service": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "LSMC service personality used for branded report accents.",
+                                "default": "qeo",
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": [
+                                        "qeo"
+                                ]
+                        },
+                        "lsmc_environment": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "Deployment environment used to gate development-only presentation modes.",
+                                "default": "production",
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": [
+                                        "production"
+                                ]
+                        },
+                        "lsmc_allow_tacky": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "boolean",
+                                "description": "Allow the development-only Tacky visual stress-test theme.",
+                                "default": false,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
+                        "dayoa_report_selectors": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "Path to a DayOA selector manifest that provides exact modality and identity mappings for report controls.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": [
+                                        "./dayoa_report_selectors.json"
+                                ]
                         },
                         "simple_output": {
                                 "deprecated": false,
@@ -3659,6 +3724,9 @@
                                                         "fn": "alignstats_combo_mqc.txt"
                                                 },
                                                 {
+                                                        "fn": "alignstats_gs_mqc.tsv"
+                                                },
+                                                {
                                                         "fn": "*alignstats_combo_mqc.tsv"
                                                 },
                                                 {
@@ -3668,11 +3736,33 @@
                                         "alignstats/json": [
                                                 {
                                                         "fn": "*.alignstats.json",
-                                                        "contents": "WgsCoverageMean"
+                                                        "contents_re": "^\\s*\\{?\\s*\"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)\"",
+                                                        "num_lines": 500
                                                 },
                                                 {
                                                         "fn": "*.alignstats.txt",
-                                                        "contents": "WgsCoverageMean"
+                                                        "contents_re": "^\\s*\\{?\\s*\"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)\"",
+                                                        "num_lines": 500
+                                                },
+                                                {
+                                                        "fn": "alignstats.json",
+                                                        "contents_re": "^\\s*\\{?\\s*\"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)\"",
+                                                        "num_lines": 500
+                                                },
+                                                {
+                                                        "fn": "alignstats.txt",
+                                                        "contents_re": "^\\s*\\{?\\s*\"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)\"",
+                                                        "num_lines": 500
+                                                },
+                                                {
+                                                        "fn": "report.json",
+                                                        "contents_re": "^\\s*\\{?\\s*\"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)\"",
+                                                        "num_lines": 500
+                                                },
+                                                {
+                                                        "fn": "report.txt",
+                                                        "contents_re": "^\\s*\\{?\\s*\"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)\"",
+                                                        "num_lines": 500
                                                 }
                                         ],
                                         "ultima/inventory": {
@@ -4089,6 +4179,39 @@
                                         "checkqc": {
                                                 "contents": "instrument_and_reagent_type",
                                                 "fn": "*.json"
+                                        },
+                                        "snakemake_benchmarks/combined": [
+                                                {
+                                                        "fn": "benchmarks.tsv"
+                                                },
+                                                {
+                                                        "fn": "benchmarks_summary.tsv"
+                                                },
+                                                {
+                                                        "fn": "rules_benchmark_data_mqc.tsv"
+                                                }
+                                        ],
+                                        "snakemake_samples/samples": [
+                                                {
+                                                        "fn": "samples.tsv"
+                                                },
+                                                {
+                                                        "fn": "input_samples_mqc.tsv"
+                                                }
+                                        ],
+                                        "snakemake_samples/units": [
+                                                {
+                                                        "fn": "units.tsv"
+                                                },
+                                                {
+                                                        "fn": "input_units_mqc.tsv"
+                                                }
+                                        ],
+                                        "snakemake_samples/gender_checks": {
+                                                "fn": "reported_vs_inferred_sex_check_mqc.tsv"
+                                        },
+                                        "snakemake_samples/hybrid_qc": {
+                                                "fn": "hybrid_seq_batch_qc.tsv"
                                         },
                                         "custom_content": {
                                                 "fn_re": ".+_mqc\\.(yaml|yml|json|txt|csv|tsv|log|out|png|jpg|jpeg|gif|webp|tiff|html|md)"
@@ -6484,7 +6607,7 @@
                                 "multiline": false,
                                 "type": "string",
                                 "description": "Base URL used for Seqera Platform links in the report.",
-                                "default": "https://seqera.io",
+                                "default": "https://ai.seqera.io",
                                 "enum": null,
                                 "items_enum": null,
                                 "examples": []
@@ -6494,7 +6617,7 @@
                                 "multiline": false,
                                 "type": "string",
                                 "description": "Base URL for the Seqera Platform API. Defaults to the public instance.",
-                                "default": "https://intern.seqera.io",
+                                "default": "https://ai.seqera.io/v1/web",
                                 "enum": null,
                                 "items_enum": null,
                                 "examples": []
@@ -7707,6 +7830,101 @@
       "group": "Template",
       "section": "Report Appearance",
       "title": "Template Dark Mode"
+    },
+    "lsmc_default_theme": {
+      "anyOf": [
+        {
+          "enum": [
+            "original",
+            "lsmc",
+            "dark",
+            "light",
+            "nosee",
+            "tacky"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Initial LSMC report theme. The original theme preserves the upstream MultiQC presentation.",
+      "examples": [
+        "lsmc"
+      ],
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Lsmc Default Theme"
+    },
+    "lsmc_service": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "LSMC service personality used for branded report accents.",
+      "examples": [
+        "qeo"
+      ],
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Lsmc Service"
+    },
+    "lsmc_environment": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Deployment environment used to gate development-only presentation modes.",
+      "examples": [
+        "production"
+      ],
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Lsmc Environment"
+    },
+    "lsmc_allow_tacky": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Allow the development-only Tacky visual stress-test theme.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Lsmc Allow Tacky"
+    },
+    "dayoa_report_selectors": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to a DayOA selector manifest that provides exact modality and identity mappings for report controls.",
+      "examples": [
+        "./dayoa_report_selectors.json"
+      ],
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Dayoa Report Selectors"
     },
     "simple_output": {
       "anyOf": [

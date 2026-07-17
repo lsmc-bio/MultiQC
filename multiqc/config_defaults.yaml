@@ -27,6 +27,11 @@ custom_css_files: []
 simple_output: false
 template: "default"
 template_dark_mode: true
+lsmc_default_theme: "lsmc"
+lsmc_service: "qeo"
+lsmc_environment: "production"
+lsmc_allow_tacky: false
+dayoa_report_selectors: null
 plot_font_family: null # Custom font family for plots (defaults to system font stack)
 profile_runtime: false
 profile_memory: false

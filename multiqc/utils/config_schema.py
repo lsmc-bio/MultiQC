@@ -286,6 +286,25 @@ class MultiQCConfig(BaseModel):
             template_dark_mode: Optional[bool] = cfg(
                 "Enable the dark mode toggle in the report template.",
             )
+            lsmc_default_theme: Optional[Literal["original", "lsmc", "dark", "light", "nosee", "tacky"]] = cfg(
+                "Initial LSMC report theme. The original theme preserves the upstream MultiQC presentation.",
+                examples=["lsmc"],
+            )
+            lsmc_service: Optional[str] = cfg(
+                "LSMC service personality used for branded report accents.",
+                examples=["qeo"],
+            )
+            lsmc_environment: Optional[str] = cfg(
+                "Deployment environment used to gate development-only presentation modes.",
+                examples=["production"],
+            )
+            lsmc_allow_tacky: Optional[bool] = cfg(
+                "Allow the development-only Tacky visual stress-test theme.",
+            )
+            dayoa_report_selectors: Optional[str] = cfg(
+                "Path to a DayOA selector manifest that provides exact modality and identity mappings for report controls.",
+                examples=["./dayoa_report_selectors.json"],
+            )
             simple_output: Optional[bool] = cfg(
                 "Render a minimal HTML report without the toolbox or interactive widgets. Useful for very large reports."
             )

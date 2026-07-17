@@ -17,7 +17,123 @@ docs/templates.md
 
 """
 
+import json
 import os
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+
+DAYOA_SELECTOR_SCHEMA_VERSION = "dayoa-report-selectors-v2"
+DAYOA_SELECTOR_MODALITIES = {"sr", "lr", "hybrid", "global"}
+DAYOA_SELECTOR_REQUIRED_FIELDS = {
+    "MultiQCAnalysisID",
+    "modality",
+    "SPECIMEN_ID",
+    "SPECIMEN_EUID",
+    "SAMPLEID",
+    "SAMPLE_EUID",
+    "ANALYSIS_UNIT_UID",
+    "LIBRARY_EUID",
+    "section",
+    "grain",
+    "pair_endpoint_roles",
+}
+
+
+def load_dayoa_selector_manifest(path: str) -> Dict[str, Any]:
+    """Load and validate the exact DayOA selector manifest used by the report UI."""
+
+    manifest_path = Path(path)
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Invalid DayOA selector JSON in {manifest_path}: {error}") from error
+
+    if not isinstance(manifest, dict):
+        raise ValueError(f"DayOA selector manifest must be a JSON object: {manifest_path}")
+    if manifest.get("schema_version") != DAYOA_SELECTOR_SCHEMA_VERSION:
+        raise ValueError(
+            f"DayOA selector manifest schema_version must be {DAYOA_SELECTOR_SCHEMA_VERSION}: {manifest_path}"
+        )
+
+    records = manifest.get("records")
+    if not isinstance(records, list) or len(records) == 0:
+        raise ValueError(f"DayOA selector manifest records must be a non-empty array: {manifest_path}")
+
+    seen_analysis_ids: set[str] = set()
+    identity_maps: Dict[str, Dict[str, Optional[str]]] = {"specimen": {}, "sample": {}, "library": {}}
+    identity_reverse_maps: Dict[str, Dict[str, str]] = {"specimen": {}, "sample": {}, "library": {}}
+    identity_fields = {
+        "specimen": ("SPECIMEN_ID", "SPECIMEN_EUID"),
+        "sample": ("SAMPLEID", "SAMPLE_EUID"),
+        "library": ("ANALYSIS_UNIT_UID", "LIBRARY_EUID"),
+    }
+
+    for index, record in enumerate(records, start=1):
+        if not isinstance(record, dict):
+            raise ValueError(f"DayOA selector record {index} must be an object: {manifest_path}")
+        missing = sorted(DAYOA_SELECTOR_REQUIRED_FIELDS - set(record))
+        if missing:
+            raise ValueError(
+                f"DayOA selector record {index} is missing required fields {', '.join(missing)}: {manifest_path}"
+            )
+
+        analysis_id = record["MultiQCAnalysisID"]
+        if not isinstance(analysis_id, str) or not analysis_id.strip():
+            raise ValueError(f"DayOA selector record {index} has a blank MultiQCAnalysisID: {manifest_path}")
+        if analysis_id in seen_analysis_ids:
+            raise ValueError(f"Duplicate MultiQCAnalysisID '{analysis_id}' in {manifest_path}")
+        seen_analysis_ids.add(analysis_id)
+
+        modality = record["modality"]
+        if modality not in DAYOA_SELECTOR_MODALITIES:
+            raise ValueError(
+                f"DayOA selector record {index} has invalid modality '{modality}', expected one of "
+                f"{', '.join(sorted(DAYOA_SELECTOR_MODALITIES))}: {manifest_path}"
+            )
+
+        for field in ("section", "grain"):
+            if not isinstance(record[field], str) or not record[field].strip():
+                raise ValueError(f"DayOA selector record {index} has a blank {field}: {manifest_path}")
+        if not isinstance(record["pair_endpoint_roles"], list) or not all(
+            isinstance(role, str) and role.strip() for role in record["pair_endpoint_roles"]
+        ):
+            raise ValueError(
+                f"DayOA selector record {index} pair_endpoint_roles must be an array of non-empty strings: "
+                f"{manifest_path}"
+            )
+
+        for identity_type, (id_field, euid_field) in identity_fields.items():
+            identity = record[id_field]
+            euid = record[euid_field]
+            if identity is None and euid is None:
+                continue
+            if not isinstance(identity, str) or not identity.strip():
+                raise ValueError(
+                    f"DayOA selector record {index} must provide {id_field} whenever {euid_field} is present: "
+                    f"{manifest_path}"
+                )
+            if euid is not None and (not isinstance(euid, str) or not euid.strip()):
+                raise ValueError(
+                    f"DayOA selector record {index} has an invalid {euid_field}; use a persisted non-empty EUID "
+                    f"or JSON null, never a guessed placeholder: {manifest_path}"
+                )
+            previous_euid = identity_maps[identity_type].setdefault(identity, euid)
+            if previous_euid != euid:
+                raise ValueError(
+                    f"DayOA selector record {index} has conflicting {identity_type} identity mapping: {manifest_path}"
+                )
+            if euid is not None:
+                previous_id = identity_reverse_maps[identity_type].setdefault(euid, identity)
+                if previous_id != identity:
+                    raise ValueError(
+                        f"DayOA selector record {index} has conflicting {identity_type} identity mapping: "
+                        f"{manifest_path}"
+                    )
+
+    return manifest
+
 
 template_dir = os.path.dirname(__file__)
 base_fn = "base.html"
+template_functions = {"load_dayoa_selector_manifest": load_dayoa_selector_manifest}

@@ -116,6 +116,60 @@ template: default
 
 Enable the dark mode toggle in the report template.
 
+#### `lsmc_default_theme`
+
+**Type**: <code>Literal["original", "lsmc", "dark", "light", "nosee", "tacky"]</code> (default: `"lsmc"`)
+
+Initial LSMC report theme. The original theme preserves the upstream MultiQC presentation.
+
+**Example**:
+
+```yaml
+lsmc_default_theme: lsmc
+```
+
+#### `lsmc_service`
+
+**Type**: <code>str</code> (default: `"qeo"`)
+
+LSMC service personality used for branded report accents.
+
+**Example**:
+
+```yaml
+lsmc_service: qeo
+```
+
+#### `lsmc_environment`
+
+**Type**: <code>str</code> (default: `"production"`)
+
+Deployment environment used to gate development-only presentation modes.
+
+**Example**:
+
+```yaml
+lsmc_environment: production
+```
+
+#### `lsmc_allow_tacky`
+
+**Type**: <code>bool</code> (default: `false`)
+
+Allow the development-only Tacky visual stress-test theme.
+
+#### `dayoa_report_selectors`
+
+**Type**: <code>str</code>
+
+Path to a DayOA selector manifest that provides exact modality and identity mappings for report controls.
+
+**Example**:
+
+```yaml
+dayoa_report_selectors: ./dayoa_report_selectors.json
+```
+
 #### `simple_output`
 
 **Type**: <code>bool</code> (default: `false`)
@@ -1272,26 +1326,27 @@ afterqc:
 alignstats/combo:
   - fn: alignstats_combo_mqc.tsv
   - fn: alignstats_combo_mqc.txt
+  - fn: alignstats_gs_mqc.tsv
   - fn: "*alignstats_combo_mqc.tsv"
   - fn: "*alignstats_combo_mqc.txt"
 alignstats/json:
   - fn: "*.alignstats.json"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: ^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"
     num_lines: 500
   - fn: "*.alignstats.txt"
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: ^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"
     num_lines: 500
   - fn: alignstats.json
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: ^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"
     num_lines: 500
   - fn: alignstats.txt
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: ^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"
     num_lines: 500
   - fn: report.json
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: ^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"
     num_lines: 500
   - fn: report.txt
-    contents_re: '^\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"'
+    contents_re: ^\s*\{?\s*"(MappedReads|MappedReadsPct|AlignedReadLengthMean|InsertSizeMean|WgsCoverageMean|CapCoverageMean|FilteredRecordsPct)"
     num_lines: 500
 ultima/inventory:
   fn: ultima_run_inventory_mqc.tsv
@@ -1597,6 +1652,20 @@ checkm2:
 checkqc:
   contents: instrument_and_reagent_type
   fn: "*.json"
+snakemake_benchmarks/combined:
+  - fn: benchmarks.tsv
+  - fn: benchmarks_summary.tsv
+  - fn: rules_benchmark_data_mqc.tsv
+snakemake_samples/samples:
+  - fn: samples.tsv
+  - fn: input_samples_mqc.tsv
+snakemake_samples/units:
+  - fn: units.tsv
+  - fn: input_units_mqc.tsv
+snakemake_samples/gender_checks:
+  fn: reported_vs_inferred_sex_check_mqc.tsv
+snakemake_samples/hybrid_qc:
+  fn: hybrid_seq_batch_qc.tsv
 custom_content:
   fn_re: .+_mqc\.(yaml|yml|json|txt|csv|tsv|log|out|png|jpg|jpeg|gif|webp|tiff|html|md)
 clipandmerge:

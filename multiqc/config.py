@@ -78,6 +78,11 @@ custom_css_files: List[str]
 simple_output: bool
 template: str
 template_dark_mode: bool
+lsmc_default_theme: Literal["original", "lsmc", "dark", "light", "nosee", "tacky"]
+lsmc_service: str
+lsmc_environment: str
+lsmc_allow_tacky: bool
+dayoa_report_selectors: Optional[str]
 plot_font_family: Optional[str]
 profile_runtime: bool
 profile_memory: bool
@@ -522,6 +527,19 @@ def _add_config(conf: Dict, conf_path=None):
             log_filename_clean_extensions.append(v)
         elif c == "extra_fn_clean_trim":
             log_filename_clean_trimmings.append(v)
+        elif c == "dayoa_report_selectors" and v:
+            # The selector manifest controls report identity and modality filtering.
+            # A configured but missing file must stop report generation rather than
+            # silently falling back to unscoped filtering.
+            fpath = v
+            if os.path.isfile(v):
+                fpath = os.path.abspath(v)
+            elif conf_path is not None and os.path.isfile(os.path.join(os.path.dirname(conf_path), v)):
+                fpath = os.path.abspath(os.path.join(os.path.dirname(conf_path), v))
+            else:
+                raise FileNotFoundError(f"Config 'dayoa_report_selectors' path not found: {fpath}")
+            log_new_config[c] = fpath
+            update({c: fpath})
         elif c in ["custom_logo", "custom_logo_dark", "custom_favicon"] and v:
             # Resolve file paths - absolute or cwd, or relative to config file
             fpath = v

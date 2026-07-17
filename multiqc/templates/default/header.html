@@ -29,7 +29,20 @@ was generated and the button that launches the welcome tour.
       {{ '</a>' if config.custom_logo_url is not none }}
     </div>
   {% endif %}
-  <a href="http://multiqc.info" target="_blank">
+  <div class="lsmc-native-brand" aria-label="LSMC evidence review">
+    <span class="lsmc-report-kicker">Evidence review</span>
+    <img
+      src="data:image/png;base64,{{ include_file('assets/img/lsmc-compact-black-transparent.png', b64=True) }}"
+      class="lsmc-native-logo lsmc-native-logo-on-light"
+      alt="LSMC"
+    />
+    <img
+      src="data:image/png;base64,{{ include_file('assets/img/lsmc-compact-white-transparent.png', b64=True) }}"
+      class="lsmc-native-logo lsmc-native-logo-on-dark"
+      alt="LSMC"
+    />
+  </div>
+  <a href="http://multiqc.info" target="_blank" class="multiqc-native-brand">
     <div class="multiqc-logo-wrapper">{{ include_file('assets/img/MultiQC_logo.svg') }}</div>
   </a>
 </h1>

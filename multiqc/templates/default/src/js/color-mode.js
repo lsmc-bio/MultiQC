@@ -1,114 +1,91 @@
-/*!
- * Color mode toggler for MultiQC based on Bootstrap's implementation
- * Licensed under the Apache License, Version 2.0
- */
+/* Native LSMC theme controller for standalone MultiQC reports. */
 
 (() => {
   "use strict";
 
-  // Check if dark mode is enabled via config
-  if (window.mqc_config && window.mqc_config.template_dark_mode === false) {
-    return;
-  }
+  const themeNames = ["original", "lsmc", "dark", "light", "nosee", "tacky"];
+  const productionEnvironments = ["prod", "production", "clinical"];
 
-  const getStoredTheme = () => localStorage.getItem("mqc-theme");
-  const setStoredTheme = (theme) => localStorage.setItem("mqc-theme", theme);
-
-  const getPreferredTheme = () => {
-    const storedTheme = getStoredTheme();
-    if (storedTheme && storedTheme !== "auto") {
-      return storedTheme;
-    }
-
-    // Default new reports to dark mode. Explicit user selections still win.
-    return storedTheme === "auto"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : "dark";
+  const normalizeTheme = (value) => {
+    const theme = String(value || "").trim().toLowerCase();
+    return themeNames.includes(theme) ? theme : "lsmc";
   };
 
-  const setTheme = (theme) => {
-    if (theme === "auto") {
-      document.documentElement.setAttribute(
-        "data-bs-theme",
-        window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-      );
-    } else {
-      document.documentElement.setAttribute("data-bs-theme", theme);
+  const tackyAllowed = () => {
+    const html = document.documentElement;
+    return html.dataset.allowTacky === "true" || !productionEnvironments.includes(html.dataset.lsmcEnvironment || "");
+  };
+
+  const storageKey = () => `lsmc.theme.${document.documentElement.dataset.lsmcService || "multiqc"}`;
+
+  const getStoredTheme = () => {
+    try {
+      const value = localStorage.getItem(storageKey());
+      return value === null ? null : normalizeTheme(value);
+    } catch (_error) {
+      return null;
     }
   };
 
-  setTheme(getPreferredTheme());
-
-  const showActiveTheme = (theme, focus = false) => {
-    const themeSwitcher = document.querySelector("#bd-theme");
-
-    if (!themeSwitcher) {
-      return;
+  const setStoredTheme = (theme) => {
+    try {
+      localStorage.setItem(storageKey(), theme);
+    } catch (_error) {
+      // The report remains usable when browser storage is unavailable.
     }
+  };
 
-    const themeSwitcherText = document.querySelector("#bd-theme-text");
-    const activeThemeIcon = document.querySelector(".theme-icon-active");
-    const btnToActive = document.querySelector(`[data-bs-theme-value="${theme}"]`);
-
-    if (!btnToActive) {
-      return;
+  const resolveTheme = (requested) => {
+    const normalized = normalizeTheme(requested);
+    if (normalized === "tacky" && !tackyAllowed()) {
+      console.warn("LSMC theme contract prevented the Tacky theme in a production-like environment.");
+      return "lsmc";
     }
+    return normalized;
+  };
 
-    // Update all dropdown items
-    document.querySelectorAll("[data-bs-theme-value]").forEach((element) => {
-      element.classList.remove("active");
-      element.setAttribute("aria-pressed", "false");
-      // Hide all checkmarks
-      const checkIcon = element.querySelector(".check-icon");
-      if (checkIcon) {
-        checkIcon.classList.add("d-none");
-      }
+  const setTheme = (requested, persist = false) => {
+    const theme = resolveTheme(requested);
+    const html = document.documentElement;
+    html.dataset.theme = theme;
+    html.dataset.bsTheme = ["lsmc", "dark"].includes(theme) ? "dark" : "light";
+    if (persist) setStoredTheme(theme);
+    return theme;
+  };
+
+  const showActiveTheme = (requested, focus = false) => {
+    const theme = resolveTheme(requested);
+    const switcher = document.querySelector("#bd-theme");
+    if (!switcher) return;
+
+    const activeIcon = switcher.querySelector(".theme-icon-active");
+    let activeButton = null;
+    document.querySelectorAll("[data-theme-value]").forEach((button) => {
+      const active = button.dataset.themeValue === theme;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+      button.querySelector(".check-icon")?.classList.toggle("d-none", !active);
+      if (active) activeButton = button;
     });
 
-    // Activate the selected theme
-    btnToActive.classList.add("active");
-    btnToActive.setAttribute("aria-pressed", "true");
-
-    // Show checkmark for active theme
-    const activeCheckIcon = btnToActive.querySelector(".check-icon");
-    if (activeCheckIcon) {
-      activeCheckIcon.classList.remove("d-none");
+    if (activeButton && activeIcon) {
+      const icon = activeButton.querySelector(".me-2");
+      if (icon) activeIcon.innerHTML = icon.innerHTML;
+      switcher.setAttribute("aria-label", `Theme (${activeButton.textContent.trim()})`);
     }
-
-    // Update the main toggle button icon by copying from the active button
-    if (activeThemeIcon && btnToActive) {
-      const activeIcon = btnToActive.querySelector(".me-2");
-      if (activeIcon) {
-        activeThemeIcon.innerHTML = activeIcon.innerHTML;
-      }
-    }
-
-    const themeSwitcherLabel = `${themeSwitcherText.textContent} (${btnToActive.dataset.bsThemeValue})`;
-    themeSwitcher.setAttribute("aria-label", themeSwitcherLabel);
-
-    if (focus) {
-      themeSwitcher.focus();
-    }
+    if (focus) switcher.focus();
   };
 
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    const storedTheme = getStoredTheme();
-    // Only update theme if user has "auto" selected or no theme stored
-    if (storedTheme === "auto" || !storedTheme) {
-      setTheme(getPreferredTheme());
-    }
-  });
+  const configuredDefault = normalizeTheme(window.mqc_config?.lsmc_default_theme || "lsmc");
+  const initialTheme = setTheme(getStoredTheme() || configuredDefault);
+
+  window.LSMCThemeContract = { themeNames, normalizeTheme, setTheme, tackyAllowed };
 
   window.addEventListener("DOMContentLoaded", () => {
-    showActiveTheme(getPreferredTheme());
-
-    document.querySelectorAll("[data-bs-theme-value]").forEach((toggle) => {
-      toggle.addEventListener("click", () => {
-        const theme = toggle.getAttribute("data-bs-theme-value");
-        setStoredTheme(theme);
-        setTheme(theme);
+    showActiveTheme(initialTheme);
+    document.querySelectorAll("[data-theme-value]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const theme = setTheme(button.dataset.themeValue, true);
         showActiveTheme(theme, true);
       });
     });
