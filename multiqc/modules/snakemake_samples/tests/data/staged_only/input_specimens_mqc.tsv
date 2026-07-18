@@ -1,0 +1,3 @@
+Sample	input_origin	SPECIMEN_ID	SPECIMEN_EUID	BIOLOGICAL_SEX	SAMPLESOURCE	SPECIMEN_TYPE
+SP1	input_manifest	SP1	test-specimen-euid-1	female	blood	control
+SP2	input_manifest	SP2	test-specimen-euid-2	male	blood	control

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --emptyOutDir",
+    "test": "node --test tests/*.test.js",
     "watch": "vite build --emptyOutDir --watch",
     "dev": "vite build --emptyOutDir --watch"
   },

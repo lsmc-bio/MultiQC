@@ -1,3 +1,5 @@
+import hashlib
+import json
 import logging
 import os
 from typing import Callable, Dict, List, Mapping, Optional, Tuple
@@ -10,14 +12,16 @@ from multiqc.types import LoadedFileDict
 from .parser import (
     HYBRID_REQUIRED_COLUMNS,
     evaluate_hybrid_qc,
+    parse_libraries,
     parse_gender_checks,
     parse_hybrid_qc,
     parse_samples,
+    parse_specimens,
+    parse_staged_libraries,
     parse_staged_samples,
-    parse_staged_units,
-    parse_units,
+    parse_staged_specimens,
     validate_gender_samples,
-    validate_unit_samples,
+    validate_manifest_lineage,
     Value,
 )
 
@@ -28,20 +32,21 @@ STATUS_COLORS = {"PASS": "#d1e7dd", "FAIL": "#f8d7da"}
 
 class MultiqcModule(BaseMultiqcModule):
     """
-    Snakemake Samples reports source manifests and per-library Hybrid Seq QC.
+    Snakemake Specimens / Samples / Libraries reports the three DayOA 12
+    source manifests and per-library Hybrid Seq QC.
 
-    The module recognizes four native TSV inputs:
+    The module recognizes six native TSV inputs:
 
-    - `samples.tsv` with one unique `SAMPLEID` row per biological sample.
-    - `units.tsv` with one row per library or analysis unit. An explicit
-      `analysis_unit_uid` is used when present. Otherwise the identifier is
-      composed from `RUNID`, `SAMPLEID`, `EXPERIMENTID`, `LANEID`, `BARCODEID`,
-      `LIBPREP`, optional `SEQ_VENDOR`, and `SEQ_PLATFORM`.
+    - `specimens.tsv` with one unique `SPECIMEN_ID` row per biospecimen.
+    - `samples.tsv` with one unique `SAMPLEID` row per aliquot/sample/order
+      and an exact `SPECIMEN_ID` foreign key.
+    - `libraries.tsv` with one row per library or analysis unit, exact
+      `ANALYSIS_UNIT_UID`, and exact `SAMPLEID` foreign key.
     - `reported_vs_inferred_sex_check_mqc.tsv` with `Sample`,
       `reported_sex_raw`, `inferred_sex_chromosome_complement`,
       `comparison_status`, and `comparison_pass` columns.
     - `hybrid_seq_batch_qc.tsv` with one schema version 1 row for every
-      `units.tsv` row. Required columns are:
+      `libraries.tsv` row. Required columns are:
 
       `schema_version`, `analysis_unit_uid`, `sample_id`,
       `contamination_estimate_pct`, `contamination_max_pct`,
@@ -68,13 +73,21 @@ class MultiqcModule(BaseMultiqcModule):
 
     def __init__(self):
         super().__init__(
-            name="Snakemake Samples",
+            name="Snakemake Specimens / Samples / Libraries",
             anchor="snakemake-samples",
             href="https://snakemake.readthedocs.io/",
-            info="Reports Snakemake sample manifests, libraries, gender checks, and per-library Hybrid Seq Batch QC.",
+            info="Reports exact DayOA specimen, sample, and library manifests, gender checks, and per-library Hybrid Seq Batch QC.",
             doi="10.1093/bioinformatics/bts480",
         )
 
+        self.specimen_fields, raw_specimens, specimen_files = self._collect_manifests(
+            "snakemake_samples/specimens",
+            "specimens",
+            "specimens.tsv",
+            "input_specimens_mqc.tsv",
+            parse_specimens,
+            parse_staged_specimens,
+        )
         self.sample_fields, raw_samples, sample_files = self._collect_manifests(
             "snakemake_samples/samples",
             "samples",
@@ -83,61 +96,73 @@ class MultiqcModule(BaseMultiqcModule):
             parse_samples,
             parse_staged_samples,
         )
-        self.unit_fields, raw_units, unit_files = self._collect_manifests(
-            "snakemake_samples/units",
-            "units",
-            "units.tsv",
-            "input_units_mqc.tsv",
-            parse_units,
-            parse_staged_units,
+        self.library_fields, raw_libraries, library_files = self._collect_manifests(
+            "snakemake_samples/libraries",
+            "libraries",
+            "libraries.tsv",
+            "input_libraries_mqc.tsv",
+            parse_libraries,
+            parse_staged_libraries,
         )
         self.gender_fields, raw_gender, gender_files = self._collect_identical_files(
             "snakemake_samples/gender_checks", "gender check", parse_gender_checks
         )
         self.hybrid_fields, parsed_hybrid, hybrid_files = self._collect_hybrid_files()
-        if not any((sample_files, unit_files, gender_files, hybrid_files)):
+        if not any((specimen_files, sample_files, library_files, gender_files, hybrid_files)):
             raise ModuleNoSamplesFound
-        if not sample_files:
+        missing_manifests = [
+            label
+            for label, files in (
+                ("specimens.tsv or input_specimens_mqc.tsv", specimen_files),
+                ("samples.tsv or input_samples_mqc.tsv", sample_files),
+                ("libraries.tsv or input_libraries_mqc.tsv", library_files),
+            )
+            if not files
+        ]
+        if missing_manifests:
             raise ValueError(
-                "Snakemake Samples requires samples.tsv or input_samples_mqc.tsv when any companion input is present"
+                "Snakemake Specimens / Samples / Libraries requires the complete three-manifest set; missing: "
+                + ", ".join(missing_manifests)
             )
 
         self.input_provenance = {
-            "samples": {"source_paths": sorted(self._source_path(source) for source in sample_files)},
-            "libraries": {"source_paths": sorted(self._source_path(source) for source in unit_files)},
+            "specimens": self._manifest_provenance(specimen_files, raw_specimens),
+            "samples": self._manifest_provenance(sample_files, raw_samples),
+            "libraries": self._manifest_provenance(library_files, raw_libraries),
             "gender_checks": {"source_paths": sorted(self._source_path(source) for source in gender_files)},
             "hybrid_qc": {"source_paths": sorted(self._source_path(source) for source in hybrid_files)},
         }
+        validate_manifest_lineage(raw_specimens, raw_samples, raw_libraries)
+        self._add_sources(specimen_files[0], raw_specimens, "specimens")
         self._add_sources(sample_files[0], raw_samples, "samples")
-
-        if unit_files:
-            validate_unit_samples(raw_samples, raw_units)
-            self._add_sources(unit_files[0], raw_units, "libraries")
+        self._add_sources(library_files[0], raw_libraries, "libraries")
 
         if gender_files:
-            validate_gender_samples(raw_samples, raw_gender)
+            validate_gender_samples(raw_specimens, raw_samples, raw_gender)
             self._add_sources(gender_files[0], raw_gender, "gender_checks")
 
         raw_hybrid: Dict[str, Dict[str, Value]] = {}
         if hybrid_files:
-            if not unit_files or not gender_files:
+            if not gender_files:
                 raise ValueError(
-                    "hybrid_seq_batch_qc.tsv requires sample, unit, and reported_vs_inferred_sex_check_mqc.tsv inputs"
+                    "hybrid_seq_batch_qc.tsv requires the three manifests and reported_vs_inferred_sex_check_mqc.tsv"
                 )
-            raw_hybrid = evaluate_hybrid_qc(parsed_hybrid, raw_units, raw_samples, raw_gender)
+            raw_hybrid = evaluate_hybrid_qc(parsed_hybrid, raw_libraries, raw_specimens, raw_samples, raw_gender)
             self._add_sources(hybrid_files[0], raw_hybrid, "hybrid_qc")
 
+        self.specimens_data = self.ignore_samples(raw_specimens)
         self.samples_data = self.ignore_samples(raw_samples)
-        self.units_data = self.ignore_samples(raw_units)
+        self.libraries_data = self.ignore_samples(raw_libraries)
         self.gender_data = self.ignore_samples(raw_gender)
         self.hybrid_data = self.ignore_samples(raw_hybrid)
-        if not any((self.samples_data, self.units_data, self.gender_data, self.hybrid_data)):
+        if not any((self.specimens_data, self.samples_data, self.libraries_data, self.gender_data, self.hybrid_data)):
             raise ModuleNoSamplesFound
 
         log.info(
-            "Found %d samples, %d libraries, %d gender checks, and %d Hybrid Seq QC rows",
+            "Found %d specimens, %d samples, %d libraries, %d gender checks, and %d Hybrid Seq QC rows",
+            len(self.specimens_data),
             len(self.samples_data),
-            len(self.units_data),
+            len(self.libraries_data),
             len(self.gender_data),
             len(self.hybrid_data),
         )
@@ -145,10 +170,12 @@ class MultiqcModule(BaseMultiqcModule):
         self._add_general_stats()
         self._add_sections()
 
+        if self.specimens_data:
+            self.write_data_file(self.specimens_data, "multiqc_snakemake_specimens")
         if self.samples_data:
             self.write_data_file(self.samples_data, "multiqc_snakemake_samples")
-        if self.units_data:
-            self.write_data_file(self.units_data, "multiqc_snakemake_libraries")
+        if self.libraries_data:
+            self.write_data_file(self.libraries_data, "multiqc_snakemake_libraries")
         if self.gender_data:
             self.write_data_file(self.gender_data, "multiqc_snakemake_gender_checks")
         if self.hybrid_data:
@@ -227,6 +254,21 @@ class MultiqcModule(BaseMultiqcModule):
     def _source_path(file_obj: Mapping[str, object]) -> str:
         return os.path.join(str(file_obj.get("root", "")), str(file_obj.get("fn", "")))
 
+    @classmethod
+    def _manifest_provenance(
+        cls, files: List[LoadedFileDict[str]], rows: Mapping[str, Mapping[str, str]]
+    ) -> Dict[str, object]:
+        canonical_json = json.dumps(rows, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        return {
+            "source_paths": sorted(cls._source_path(source) for source in files),
+            "source_file_count": len(files),
+            "source_row_counts": [len(rows) for _source in files],
+            "normalized_row_count": len(rows),
+            "normalized_keys": sorted(rows),
+            "normalized_rows_sha256": hashlib.sha256(canonical_json.encode("utf-8")).hexdigest(),
+            "reconciliation_status": "exact",
+        }
+
     def _add_sources(
         self, file_obj: LoadedFileDict[str], rows: Mapping[str, Mapping[str, Value]], section: str
     ) -> None:
@@ -274,29 +316,60 @@ class MultiqcModule(BaseMultiqcModule):
         }
         configured_headers = self.get_general_stats_headers(all_headers=headers)
         if configured_headers:
-            self.general_stats_addcols(self.hybrid_data, configured_headers, namespace="Snakemake Samples")
+            self.general_stats_addcols(
+                self.hybrid_data, configured_headers, namespace="Snakemake Specimens / Samples / Libraries"
+            )
 
     def _add_sections(self) -> None:
+        if self.specimens_data:
+            self.add_section(
+                name="Specimens",
+                anchor="snakemake-samples-specimens",
+                description="Source-faithful rows from <code>specimens.tsv</code>, keyed by exact <code>SPECIMEN_ID</code>.",
+                plot=table.plot(
+                    self.specimens_data,
+                    table_headers(self.specimens_data),
+                    {
+                        "id": "snakemake_specimens_table",
+                        "title": "Snakemake Specimens / Samples / Libraries: Specimens",
+                        "no_violin": True,
+                    },
+                ),
+            )
         if self.samples_data:
             self.add_section(
                 name="Samples",
                 anchor="snakemake-samples-samples",
-                description="Source-faithful rows from <code>samples.tsv</code>, keyed by <code>SAMPLEID</code>.",
+                description=(
+                    "Source-faithful rows from <code>samples.tsv</code>, keyed by exact <code>SAMPLEID</code> "
+                    "and retaining the <code>SPECIMEN_ID</code> parent."
+                ),
                 plot=table.plot(
                     self.samples_data,
                     table_headers(self.samples_data),
-                    {"id": "snakemake_samples_table", "title": "Snakemake Samples: Samples", "no_violin": True},
+                    {
+                        "id": "snakemake_samples_table",
+                        "title": "Snakemake Specimens / Samples / Libraries: Samples",
+                        "no_violin": True,
+                    },
                 ),
             )
-        if self.units_data:
+        if self.libraries_data:
             self.add_section(
                 name="Libraries",
                 anchor="snakemake-samples-libraries",
-                description="Source-faithful rows from <code>units.tsv</code>, keyed by collision-safe analysis unit identifier.",
+                description=(
+                    "Source-faithful rows from <code>libraries.tsv</code>, keyed by exact "
+                    "<code>ANALYSIS_UNIT_UID</code> and retaining the <code>SAMPLEID</code> parent."
+                ),
                 plot=table.plot(
-                    self.units_data,
-                    table_headers(self.units_data),
-                    {"id": "snakemake_libraries_table", "title": "Snakemake Samples: Libraries", "no_violin": True},
+                    self.libraries_data,
+                    table_headers(self.libraries_data),
+                    {
+                        "id": "snakemake_libraries_table",
+                        "title": "Snakemake Specimens / Samples / Libraries: Libraries",
+                        "no_violin": True,
+                    },
                 ),
             )
         if self.gender_data:
@@ -304,7 +377,7 @@ class MultiqcModule(BaseMultiqcModule):
                 name="Reported and Observed Gender Checks",
                 anchor="snakemake-samples-gender-checks",
                 description=(
-                    "Reported <code>BIOLOGICAL_SEX</code> provenance from <code>samples.tsv</code> compared with "
+                    "Reported <code>BIOLOGICAL_SEX</code> provenance from <code>specimens.tsv</code> compared with "
                     "the observed inferred sex-chromosome complement. Non-evaluable evidence is not a pass."
                 ),
                 plot=table.plot(

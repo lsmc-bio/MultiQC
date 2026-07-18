@@ -1,24 +1,11 @@
 import csv
 import math
-import re
 from io import StringIO
 from typing import Dict, List, Mapping, Optional, Tuple, Union
 
 
 Numeric = Union[int, float]
 Value = Union[int, float, str, bool]
-
-UNIT_UID_COLUMNS = (
-    "RUNID",
-    "SAMPLEID",
-    "EXPERIMENTID",
-    "LANEID",
-    "BARCODEID",
-    "LIBPREP",
-    "SEQ_VENDOR",
-    "SEQ_PLATFORM",
-)
-UNIT_UID_REQUIRED_COLUMNS = frozenset(UNIT_UID_COLUMNS) - {"SEQ_VENDOR"}
 
 GENDER_REQUIRED_COLUMNS = frozenset(
     {
@@ -85,7 +72,7 @@ NONNEGATIVE_FLOAT_COLUMNS = frozenset(
 
 INTEGER_COLUMNS = frozenset({"expected_relative_matches", "detected_relative_matches"})
 STAGED_SAMPLE_METADATA_COLUMNS = frozenset({"Sample", "input_origin"})
-VALID_STAGED_UNIT_ORIGINS = frozenset({"input_manifest", "generated_by_snakemake"})
+VALID_STAGED_LIBRARY_ORIGINS = frozenset({"input_manifest", "generated_by_snakemake"})
 
 
 def parse_tsv(text: Optional[str], filename: str, label: str) -> Tuple[List[str], List[Dict[str, str]]]:
@@ -111,10 +98,26 @@ def parse_tsv(text: Optional[str], filename: str, label: str) -> Tuple[List[str]
     return fieldnames, rows
 
 
+def parse_specimens(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    fieldnames, rows = parse_tsv(text, filename, "specimens")
+    if "SPECIMEN_ID" not in fieldnames:
+        raise ValueError(f"specimens.tsv is missing required SPECIMEN_ID column: {filename}")
+    parsed: Dict[str, Dict[str, str]] = {}
+    for line_number, row in enumerate(rows, start=2):
+        specimen_id = row["SPECIMEN_ID"].strip()
+        if not specimen_id:
+            raise ValueError(f"specimens.tsv line {line_number} has a blank SPECIMEN_ID: {filename}")
+        if specimen_id in parsed:
+            raise ValueError(f"specimens.tsv contains duplicate SPECIMEN_ID '{specimen_id}': {filename}")
+        parsed[specimen_id] = row
+    return fieldnames, parsed
+
+
 def parse_samples(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
     fieldnames, rows = parse_tsv(text, filename, "samples")
-    if "SAMPLEID" not in fieldnames:
-        raise ValueError(f"samples.tsv is missing required SAMPLEID column: {filename}")
+    missing = sorted({"SAMPLEID", "SPECIMEN_ID"} - set(fieldnames))
+    if missing:
+        raise ValueError(f"samples.tsv is missing required column(s) {', '.join(missing)}: {filename}")
     parsed: Dict[str, Dict[str, str]] = {}
     for line_number, row in enumerate(rows, start=2):
         sample_id = row["SAMPLEID"].strip()
@@ -126,114 +129,125 @@ def parse_samples(text: Optional[str], filename: str) -> Tuple[List[str], Dict[s
     return fieldnames, parsed
 
 
-def parse_staged_samples(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    fieldnames, rows = parse_tsv(text, filename, "staged samples")
-    required = {"Sample", "input_origin", "SAMPLEID"}
+def _parse_staged_entity(
+    text: Optional[str],
+    filename: str,
+    *,
+    label: str,
+    key_field: str,
+    valid_origins: frozenset[str],
+) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    fieldnames, rows = parse_tsv(text, filename, f"staged {label}")
+    required = {"Sample", "input_origin", key_field}
     missing = sorted(required - set(fieldnames))
     if missing:
-        raise ValueError(f"staged samples TSV is missing required column(s) {', '.join(missing)}: {filename}")
+        raise ValueError(f"staged {label} TSV is missing required column(s) {', '.join(missing)}: {filename}")
 
     parsed: Dict[str, Dict[str, str]] = {}
     for line_number, row in enumerate(rows, start=2):
         sample_key = row["Sample"].strip()
-        sample_id = row["SAMPLEID"].strip()
-        if not sample_key or sample_key != sample_id:
-            raise ValueError(f"staged samples TSV Sample must exactly match SAMPLEID on line {line_number}: {filename}")
-        if row["input_origin"].strip() != "input_manifest":
+        entity_id = row[key_field].strip()
+        if not sample_key or sample_key != entity_id:
             raise ValueError(
-                f"staged samples TSV requires input_origin=input_manifest on line {line_number}: {filename}"
+                f"staged {label} TSV Sample must exactly match {key_field} on line {line_number}: {filename}"
             )
-        if sample_id in parsed:
-            raise ValueError(f"staged samples TSV contains duplicate Sample '{sample_id}': {filename}")
-        parsed[sample_id] = {
+        origin = row["input_origin"].strip()
+        if origin not in valid_origins:
+            allowed = ", ".join(sorted(valid_origins))
+            raise ValueError(
+                f"staged {label} TSV input_origin must be one of {allowed} on line {line_number}: {filename}"
+            )
+        if entity_id in parsed:
+            raise ValueError(f"staged {label} TSV contains duplicate Sample '{entity_id}': {filename}")
+        parsed[entity_id] = {
             column: row[column] for column in fieldnames if column not in STAGED_SAMPLE_METADATA_COLUMNS
         }
     return [column for column in fieldnames if column not in STAGED_SAMPLE_METADATA_COLUMNS], parsed
 
 
-def _clean_uid_component(value: str) -> str:
-    text = str(value).strip()
-    if text.lower() in {"", "na", "none"}:
-        return ""
-    return re.sub(r"\s+", "", text)
+def parse_staged_specimens(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_staged_entity(
+        text,
+        filename,
+        label="specimens",
+        key_field="SPECIMEN_ID",
+        valid_origins=frozenset({"input_manifest"}),
+    )
 
 
-def analysis_unit_uid(row: Mapping[str, str], filename: str) -> str:
-    explicit_values = [
-        _clean_uid_component(row[field])
-        for field in ("analysis_unit_uid", "ANALYSIS_UNIT_UID")
-        if field in row and _clean_uid_component(row[field])
-    ]
-    if len(set(explicit_values)) > 1:
-        raise ValueError(f"units.tsv has conflicting analysis unit identifiers: {filename}")
-    if explicit_values:
-        return explicit_values[0]
+def parse_staged_samples(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_staged_entity(
+        text,
+        filename,
+        label="samples",
+        key_field="SAMPLEID",
+        valid_origins=frozenset({"input_manifest"}),
+    )
 
-    missing = sorted(UNIT_UID_REQUIRED_COLUMNS - set(row))
+
+def parse_libraries(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    fieldnames, rows = parse_tsv(text, filename, "libraries")
+    missing = sorted({"ANALYSIS_UNIT_UID", "SAMPLEID"} - set(fieldnames))
     if missing:
-        raise ValueError(
-            f"units.tsv cannot construct analysis_unit_uid; missing column(s) {', '.join(missing)}: {filename}"
-        )
-    components = [_clean_uid_component(row.get(column, "")) for column in UNIT_UID_COLUMNS]
-    components = [component for component in components if component]
-    if not components:
-        raise ValueError(f"units.tsv row cannot construct a nonempty analysis_unit_uid: {filename}")
-    return "-".join(components)
-
-
-def parse_units(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    fieldnames, rows = parse_tsv(text, filename, "units")
-    if "SAMPLEID" not in fieldnames:
-        raise ValueError(f"units.tsv is missing required SAMPLEID column: {filename}")
+        raise ValueError(f"libraries.tsv is missing required column(s) {', '.join(missing)}: {filename}")
     parsed: Dict[str, Dict[str, str]] = {}
     for line_number, row in enumerate(rows, start=2):
         sample_id = row["SAMPLEID"].strip()
         if not sample_id:
-            raise ValueError(f"units.tsv line {line_number} has a blank SAMPLEID: {filename}")
-        unit_uid = analysis_unit_uid(row, filename)
+            raise ValueError(f"libraries.tsv line {line_number} has a blank SAMPLEID: {filename}")
+        unit_uid = row["ANALYSIS_UNIT_UID"].strip()
+        if not unit_uid:
+            raise ValueError(f"libraries.tsv line {line_number} has a blank ANALYSIS_UNIT_UID: {filename}")
         if unit_uid in parsed:
-            raise ValueError(f"units.tsv contains duplicate analysis_unit_uid '{unit_uid}': {filename}")
-        parsed[unit_uid] = {**row, "analysis_unit_uid": unit_uid}
+            raise ValueError(f"libraries.tsv contains duplicate ANALYSIS_UNIT_UID '{unit_uid}': {filename}")
+        parsed[unit_uid] = row
     output_fields = list(fieldnames)
-    if "analysis_unit_uid" not in output_fields:
-        output_fields.insert(0, "analysis_unit_uid")
     return output_fields, parsed
 
 
-def parse_staged_units(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    fieldnames, rows = parse_tsv(text, filename, "staged units")
-    required = {"Sample", "input_origin", "SAMPLEID"}
+def parse_staged_libraries(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    fieldnames, rows = parse_tsv(text, filename, "staged libraries")
+    required = {"Sample", "input_origin", "ANALYSIS_UNIT_UID", "SAMPLEID"}
     missing = sorted(required - set(fieldnames))
     if missing:
-        raise ValueError(f"staged units TSV is missing required column(s) {', '.join(missing)}: {filename}")
+        raise ValueError(f"staged libraries TSV is missing required column(s) {', '.join(missing)}: {filename}")
 
     parsed: Dict[str, Dict[str, str]] = {}
     for line_number, row in enumerate(rows, start=2):
-        unit_uid = analysis_unit_uid(row, filename)
+        unit_uid = row["ANALYSIS_UNIT_UID"].strip()
         sample_key = row["Sample"].strip()
         if not sample_key or sample_key != unit_uid:
             raise ValueError(
-                f"staged units TSV Sample must exactly match analysis_unit_uid on line {line_number}: {filename}"
+                f"staged libraries TSV Sample must exactly match ANALYSIS_UNIT_UID on line {line_number}: {filename}"
             )
-        if row["input_origin"].strip() not in VALID_STAGED_UNIT_ORIGINS:
-            allowed = ", ".join(sorted(VALID_STAGED_UNIT_ORIGINS))
+        if row["input_origin"].strip() not in VALID_STAGED_LIBRARY_ORIGINS:
+            allowed = ", ".join(sorted(VALID_STAGED_LIBRARY_ORIGINS))
             raise ValueError(
-                f"staged units TSV input_origin must be one of {allowed} on line {line_number}: {filename}"
+                f"staged libraries TSV input_origin must be one of {allowed} on line {line_number}: {filename}"
             )
         if unit_uid in parsed:
-            raise ValueError(f"staged units TSV contains duplicate Sample '{unit_uid}': {filename}")
+            raise ValueError(f"staged libraries TSV contains duplicate Sample '{unit_uid}': {filename}")
         source_row = {column: row[column] for column in fieldnames if column not in STAGED_SAMPLE_METADATA_COLUMNS}
-        parsed[unit_uid] = {**source_row, "analysis_unit_uid": unit_uid}
+        parsed[unit_uid] = source_row
     output_fields = [column for column in fieldnames if column not in STAGED_SAMPLE_METADATA_COLUMNS]
-    if "analysis_unit_uid" not in output_fields:
-        output_fields.insert(0, "analysis_unit_uid")
     return output_fields, parsed
 
 
-def validate_unit_samples(samples: Mapping[str, Mapping[str, str]], units: Mapping[str, Mapping[str, str]]) -> None:
-    unknown = sorted({row["SAMPLEID"].strip() for row in units.values()} - set(samples))
-    if unknown:
-        raise ValueError(f"units.tsv references SAMPLEID values absent from samples.tsv: {', '.join(unknown)}")
+def validate_manifest_lineage(
+    specimens: Mapping[str, Mapping[str, str]],
+    samples: Mapping[str, Mapping[str, str]],
+    libraries: Mapping[str, Mapping[str, str]],
+) -> None:
+    unknown_specimens = sorted({row["SPECIMEN_ID"].strip() for row in samples.values()} - set(specimens))
+    if unknown_specimens:
+        raise ValueError(
+            "samples.tsv references SPECIMEN_ID values absent from specimens.tsv: " + ", ".join(unknown_specimens)
+        )
+    unknown_samples = sorted({row["SAMPLEID"].strip() for row in libraries.values()} - set(samples))
+    if unknown_samples:
+        raise ValueError(
+            "libraries.tsv references SAMPLEID values absent from samples.tsv: " + ", ".join(unknown_samples)
+        )
 
 
 def parse_gender_checks(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
@@ -264,10 +278,12 @@ def parse_gender_checks(text: Optional[str], filename: str) -> Tuple[List[str], 
 
 
 def validate_gender_samples(
-    samples: Mapping[str, Mapping[str, str]], gender_checks: Mapping[str, Mapping[str, str]]
+    specimens: Mapping[str, Mapping[str, str]],
+    samples: Mapping[str, Mapping[str, str]],
+    gender_checks: Mapping[str, Mapping[str, str]],
 ) -> None:
-    if any("BIOLOGICAL_SEX" not in row for row in samples.values()):
-        raise ValueError("samples.tsv must contain BIOLOGICAL_SEX when gender checks are present")
+    if any("BIOLOGICAL_SEX" not in row for row in specimens.values()):
+        raise ValueError("specimens.tsv must contain BIOLOGICAL_SEX when gender checks are present")
     missing = sorted(set(samples) - set(gender_checks))
     unknown = sorted(set(gender_checks) - set(samples))
     if missing or unknown:
@@ -280,11 +296,12 @@ def validate_gender_samples(
     mismatched = sorted(
         sample_id
         for sample_id, row in gender_checks.items()
-        if row["reported_sex_raw"].strip() != samples[sample_id]["BIOLOGICAL_SEX"].strip()
+        if row["reported_sex_raw"].strip()
+        != specimens[samples[sample_id]["SPECIMEN_ID"].strip()]["BIOLOGICAL_SEX"].strip()
     )
     if mismatched:
         raise ValueError(
-            "gender check reported_sex_raw does not match samples.tsv BIOLOGICAL_SEX for: " + ", ".join(mismatched)
+            "gender check reported_sex_raw does not match specimens.tsv BIOLOGICAL_SEX for: " + ", ".join(mismatched)
         )
 
 
@@ -360,27 +377,28 @@ def parse_hybrid_qc(text: Optional[str], filename: str) -> Tuple[List[str], Dict
 
 def evaluate_hybrid_qc(
     hybrid_rows: Mapping[str, Mapping[str, Value]],
-    units: Mapping[str, Mapping[str, str]],
+    libraries: Mapping[str, Mapping[str, str]],
+    specimens: Mapping[str, Mapping[str, str]],
     samples: Mapping[str, Mapping[str, str]],
     gender_checks: Mapping[str, Mapping[str, str]],
 ) -> Dict[str, Dict[str, Value]]:
-    missing = sorted(set(units) - set(hybrid_rows))
-    unknown = sorted(set(hybrid_rows) - set(units))
+    missing = sorted(set(libraries) - set(hybrid_rows))
+    unknown = sorted(set(hybrid_rows) - set(libraries))
     if missing or unknown:
         parts = []
         if missing:
-            parts.append(f"missing units: {', '.join(missing)}")
+            parts.append(f"missing libraries: {', '.join(missing)}")
         if unknown:
-            parts.append(f"unknown units: {', '.join(unknown)}")
-        raise ValueError("Hybrid QC rows must exactly match units.tsv; " + "; ".join(parts))
+            parts.append(f"unknown libraries: {', '.join(unknown)}")
+        raise ValueError("Hybrid QC rows must exactly match libraries.tsv; " + "; ".join(parts))
 
     evaluated: Dict[str, Dict[str, Value]] = {}
     for unit_uid, row in hybrid_rows.items():
         sample_id = str(row["sample_id"])
-        unit_sample_id = units[unit_uid]["SAMPLEID"].strip()
+        unit_sample_id = libraries[unit_uid]["SAMPLEID"].strip()
         if sample_id != unit_sample_id:
             raise ValueError(
-                f"Hybrid QC sample_id '{sample_id}' does not match units.tsv SAMPLEID '{unit_sample_id}' for {unit_uid}"
+                f"Hybrid QC sample_id '{sample_id}' does not match libraries.tsv SAMPLEID '{unit_sample_id}' for {unit_uid}"
             )
         gender = gender_checks[sample_id]
         checks = {
@@ -406,7 +424,7 @@ def evaluate_hybrid_qc(
         failed_checks = sum(not passed for passed in checks.values())
         evaluated[unit_uid] = {
             "sample_id": sample_id,
-            "reported_gender": samples[sample_id]["BIOLOGICAL_SEX"],
+            "reported_gender": specimens[samples[sample_id]["SPECIMEN_ID"]]["BIOLOGICAL_SEX"],
             "observed_gender": gender["inferred_sex_chromosome_complement"],
             "overall_status": "PASS" if failed_checks == 0 else "FAIL",
             "failed_checks": failed_checks,

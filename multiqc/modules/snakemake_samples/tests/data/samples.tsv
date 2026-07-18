@@ -1,3 +1,3 @@
-SAMPLEID	BIOLOGICAL_SEX	SAMPLESOURCE	SAMPLECLASS
-S1	female	blood	research
-S2	male	blood	research
+SAMPLEID	SAMPLE_EUID	SPECIMEN_ID	SAMPLECLASS
+S1	test-sample-euid-1	SP1	research
+S2	test-sample-euid-2	SP2	research
