@@ -10,15 +10,21 @@ class ScatterPlot extends Plot {
 
     let points = dataset.points;
 
-    let samples = points.map((point) => point.name);
+    points.forEach((point) => {
+      point.originalName ??= point.name;
+    });
+    let samples = points.map((point) => point.originalName);
     let sampleSettings = applyToolboxSettings(samples);
 
-    points = points.map((point, idx) => {
-      point.pseudonym = sampleSettings[idx].pseudonym;
-      point.name = sampleSettings[idx].name ?? point.name;
-      point.highlight = sampleSettings[idx].highlight;
-      if (!sampleSettings[idx].hidden) return point;
-    });
+    points = points
+      .map((point, idx) => {
+        point.pseudonym = sampleSettings[idx].pseudonym;
+        point.name = sampleSettings[idx].name ?? point.name;
+        point.highlight = sampleSettings[idx].highlight;
+        if (!sampleSettings[idx].hidden) return point;
+      })
+      .filter(Boolean);
+    samples = samples.filter((_, idx) => !sampleSettings[idx].hidden);
 
     return [samples, points];
   }
@@ -93,7 +99,15 @@ class ScatterPlot extends Plot {
       let showInLegend = false;
       let displayName = point.name;
 
-      if (!point.hide_in_legend && point.group) {
+      const dayoaGroup = window.dayoaPlotGroupingFor?.(this.anchor, point.originalName);
+      if (dayoaGroup) {
+        let legendKey = `dayoa:${dayoaGroup.value}`;
+        if (!inLegend.has(legendKey)) {
+          inLegend.add(legendKey);
+          showInLegend = true;
+        }
+        displayName = dayoaGroup.label;
+      } else if (!point.hide_in_legend && point.group) {
         let legendKey = point.group;
 
         if (!inLegend.has(legendKey)) {
@@ -120,6 +134,11 @@ class ScatterPlot extends Plot {
       // Add legendgroup for proper legend click behavior with groups
       if (point.group) {
         trace.legendgroup = point.group;
+      }
+      if (dayoaGroup) {
+        trace.legendgroup = `dayoa:${dayoaGroup.value}`;
+        trace.legendrank = dayoaGroup.dayoa_group_order;
+        trace.meta = { ...(trace.meta || {}), dayoa_group_value: dayoaGroup.value, analysis_id: point.originalName };
       }
 
       return trace;

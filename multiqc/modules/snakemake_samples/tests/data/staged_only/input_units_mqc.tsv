@@ -1,3 +1,0 @@
-"Sample"	"input_origin"	"analysis_unit_uid"	"RUNID"	"SAMPLEID"	"EXPERIMENTID"	"LANEID"	"BARCODEID"	"LIBPREP"	"SEQ_VENDOR"	"SEQ_PLATFORM"
-"lib-pass"	"input_manifest"	"lib-pass"	"RUN1"	"S1"	"EXP1"	"1"	"BC01"	"PCR-FREE"	"ILMN"	"NOVASEQ"
-"lib-fail"	"input_manifest"	"lib-fail"	"RUN1"	"S2"	"EXP2"	"1"	"BC02"	"PCR-FREE"	"ILMN"	"NOVASEQ"

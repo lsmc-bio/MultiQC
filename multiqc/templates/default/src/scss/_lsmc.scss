@@ -178,7 +178,7 @@ html[data-theme="tacky"] {
 
     .btn-primary,
     .dayoa-modality-button.active,
-    .dayoa-identity-chip.active {
+    .dayoa-identity-chip[data-selector-state="include"] {
       color: var(--ui-bg);
       background: var(--ui-accent);
       border-color: var(--ui-accent);
@@ -222,6 +222,21 @@ html[data-theme]:not([data-theme="original"]) {
   .lsmc-native-logo-on-light,
   .lsmc-native-logo-on-dark {
     display: none;
+  }
+
+  // Branded table cells use opaque data bars. Keep values above those bars
+  // without changing the untouched upstream original theme's stacking model.
+  .mqc_table .wrapper {
+    z-index: 0;
+  }
+
+  .mqc_table tbody tr td .wrapper .val {
+    position: relative;
+    z-index: 1;
+  }
+
+  .mqc_table .bar {
+    z-index: 0;
   }
 }
 
@@ -314,6 +329,26 @@ html[data-theme="tacky"]:not([data-theme="original"]) .lsmc-native-logo-on-light
   text-align: left;
 }
 
+.dayoa-identity-chip[data-selector-state="include"]::before {
+  content: "+";
+  margin-right: 4px;
+  font-weight: 900;
+}
+
+.dayoa-identity-chip[data-selector-state="exclude"] {
+  border-color: var(--ui-danger, #a61b1b);
+  background: color-mix(in srgb, var(--ui-danger, #a61b1b) 18%, var(--bs-body-bg, #ffffff));
+  color: var(--ui-danger, #a61b1b);
+  text-decoration: line-through;
+}
+
+.dayoa-identity-chip[data-selector-state="exclude"]::before {
+  content: "\2212";
+  margin-right: 4px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .dayoa-selector-footer {
   margin-top: 10px;
   color: var(--bs-secondary-color);
@@ -322,6 +357,26 @@ html[data-theme="tacky"]:not([data-theme="original"]) .lsmc-native-logo-on-light
 
 .dayoa-selector-hidden {
   display: none !important;
+}
+
+.dayoa-plot-grouping-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+}
+
+.dayoa-plot-grouping-control label {
+  margin: 0;
+  font-weight: 750;
+}
+
+.dayoa-plot-grouping-control select {
+  width: auto;
+  min-width: 132px;
 }
 
 html[data-theme]:not([data-theme="original"]) .lsmc-status,

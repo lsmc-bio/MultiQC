@@ -10,7 +10,10 @@ class LinePlot extends Plot {
 
     let lines = dataset.lines;
 
-    let samples = lines.map((line) => line.name);
+    lines.forEach((line) => {
+      line.originalName ??= line.name;
+    });
+    let samples = lines.map((line) => line.originalName);
     let sampleSettings = applyToolboxSettings(samples);
     this.filtSampleSettings = sampleSettings.filter((s) => !s.hidden);
 
@@ -90,6 +93,7 @@ class LinePlot extends Plot {
     let nonHighlighted = lines.filter((p) => !p.highlight);
     lines = nonHighlighted.concat(highlighted);
 
+    const dayoaLegendGroups = new Set();
     return lines.map((line) => {
       let color = line.color;
       if (highlighted.length > 0) {
@@ -124,13 +128,22 @@ class LinePlot extends Plot {
 
       updateObject(params, dataset["trace_params"], true);
 
+      const dayoaGroup = window.dayoaPlotGroupingFor?.(this.anchor, line.originalName);
+      const showGroupLegend = dayoaGroup && !dayoaLegendGroups.has(dayoaGroup.value);
+      if (dayoaGroup) dayoaLegendGroups.add(dayoaGroup.value);
       return {
+        ...params,
         type: "scatter",
         x: line.pairs.map((x) => x[0]),
         y: line.pairs.map((x) => x[1]),
-        name: line.name,
+        name: dayoaGroup?.label ?? line.name,
         text: line.pairs.map(() => line.name),
-        ...params,
+        legendgroup: dayoaGroup ? `dayoa:${dayoaGroup.value}` : undefined,
+        legendrank: dayoaGroup?.dayoa_group_order,
+        showlegend: dayoaGroup ? showGroupLegend : params.showlegend,
+        meta: dayoaGroup
+          ? { dayoa_group_value: dayoaGroup.value, analysis_id: line.originalName }
+          : undefined,
       };
     });
   }
