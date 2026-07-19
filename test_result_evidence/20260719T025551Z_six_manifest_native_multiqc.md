@@ -56,16 +56,19 @@ Total messages: 1 (Errors: 0, Warnings: 0)
 The sole message was a browser verbose autocomplete suggestion, not a report
 warning or error.
 
-## Broader-suite environment boundary
+## Broader-suite baseline comparison
 
-`tests/test_search_files.py` and `tests/test_modules_run.py` could not run in
-this isolated worktree because the required MultiQC `test-data` checkout is not
-present. The fixture reported:
+The external MultiQC `test-data` repository was subsequently cloned at commit
+`84dc905`. The broad search/module harness was run against both the candidate
+and an isolated exact `.9` baseline worktree:
 
 ```text
-FileNotFoundError: The test data directory expected to be found at
-/Users/jmajor/projects/lsmc/MultiQC/test-data
+candidate acecb8fc: 382 passed, 53 failed
+baseline  421bab7a: 340 passed, 53 failed
 ```
 
-No product failure was observed in that attempt. Full repository QA remains an
-integration-lane gate once the external test-data fixture is available.
+The candidate adds exactly 42 passing native six-manifest tests. The identical
+53 failures are inherited from `.9`: fork-wide strict duplicate-source checks,
+the pre-existing AlignStats malformed fixture, and LSMC-only modules absent
+from the upstream fixture repository. No new broad-harness failure was added by
+this change.

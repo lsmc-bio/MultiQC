@@ -29,7 +29,7 @@ This lane is local-only. A0 owns integration, push, release, and tagging.
 | MQ6-003 | Render source-grain tables plus resolved ordered analysis-unit selections | SUCCESS | Strict synthetic render completed with six native sections. |
 | MQ6-004 | Preserve exact identifiers in downloads and selector-visible row keys | SUCCESS | Six native downloads and report snapshot retain exact IDs and declared arrays. |
 | MQ6-005 | Reject old three-file library-as-analysis-unit shape | SUCCESS | Focused regression test rejects `ANALYSIS_UNIT_UID`-keyed `libraries.tsv`. |
-| MQ6-006 | Run focused/full tests, strict render, and browser-console QA | SUCCESS | `test_result_evidence/20260719T025551Z_six_manifest_native_multiqc.md`; 42 passed, 0 browser errors/warnings. Full external-fixture suite is integration-gated because `test-data/` is absent. |
+| MQ6-006 | Run focused/full tests, strict render, and browser-console QA | SUCCESS | `test_result_evidence/20260719T025551Z_six_manifest_native_multiqc.md`; 42 focused tests passed, 0 browser errors/warnings. External-fixture comparison: candidate 382 passed/53 inherited failures; exact `.9` baseline 340 passed/the same 53 failures. |
 | MQ6-007 | Commit local candidate for A0 integration | SUCCESS | This ledger and the native module candidate are committed together on `codex/six-manifest-native-multiqc`; A0 owns push, tag, and release. |
 
 ## Decisions
