@@ -89,6 +89,7 @@ ENTITY_REQUIRED_COLUMNS = {
 }
 ANALYSIS_UNIT_INPUT_REQUIRED_COLUMNS = frozenset({"ANALYSIS_UNIT_UID", "SEQUENCING_INPUT_UID", "ROLE", "INPUT_ORDINAL"})
 INPUT_ROLES = frozenset({"sr", "lr"})
+INPUT_LAYOUTS = frozenset({"paired_fastq", "single_fastq", "aligned_bam", "aligned_cram", "vcf"})
 
 
 def parse_tsv(text: Optional[str], filename: str, label: str) -> Tuple[List[str], List[Dict[str, str]]]:
@@ -132,6 +133,18 @@ def _parse_entity(text: Optional[str], filename: str, label: str) -> Tuple[List[
         normalized = dict(row)
         for column in required:
             normalized[column] = normalized[column].strip()
+        if label == "sequencing inputs":
+            modality = normalized["MODALITY"]
+            layout = normalized["LAYOUT"]
+            if modality not in INPUT_ROLES:
+                raise ValueError(
+                    f"{filename} line {line_number} MODALITY must be one of {sorted(INPUT_ROLES)}; "
+                    f"observed {modality!r}"
+                )
+            if layout not in INPUT_LAYOUTS:
+                raise ValueError(
+                    f"{filename} line {line_number} LAYOUT must be one of {sorted(INPUT_LAYOUTS)}; observed {layout!r}"
+                )
         parsed[key] = normalized
     return fieldnames, parsed
 

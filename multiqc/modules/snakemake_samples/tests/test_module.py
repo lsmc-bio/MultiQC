@@ -17,9 +17,9 @@ LIBRARIES = (
 )
 SEQUENCING_INPUTS = (
     "SEQUENCING_INPUT_UID\tLIBRARY_ID\tMODALITY\tLAYOUT\n"
-    "INPUT-LR\tLIB-LR\tlr\tsingle\n"
-    "INPUT-SR-A\tLIB-SR-A\tsr\tpaired\n"
-    "INPUT-SR-B\tLIB-SR-B\tsr\tpaired\n"
+    "INPUT-LR\tLIB-LR\tlr\tsingle_fastq\n"
+    "INPUT-SR-A\tLIB-SR-A\tsr\tpaired_fastq\n"
+    "INPUT-SR-B\tLIB-SR-B\tsr\tpaired_fastq\n"
 )
 ANALYSIS_UNITS = "ANALYSIS_UNIT_UID\tSAMPLEID\nAU-1\tS1\n"
 ANALYSIS_UNIT_INPUTS = (
@@ -113,7 +113,11 @@ def test_module_renders_exact_six_manifest_model(tmp_path: Path) -> None:
         "LIB-SR-B",
         "LIB-LR",
     ]
-    assert json.loads(module.analysis_units_data["AU-1"]["SELECTED_INPUT_LAYOUTS"]) == ["paired", "paired", "single"]
+    assert json.loads(module.analysis_units_data["AU-1"]["SELECTED_INPUT_LAYOUTS"]) == [
+        "paired_fastq",
+        "paired_fastq",
+        "single_fastq",
+    ]
     for entity, count in (
         ("specimens", 1),
         ("samples", 1),

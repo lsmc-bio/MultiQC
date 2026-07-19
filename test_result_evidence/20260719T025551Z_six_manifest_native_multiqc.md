@@ -11,7 +11,7 @@
 
 ```text
 coverage run --source=multiqc/modules/snakemake_samples -m pytest -q multiqc/modules/snakemake_samples/tests
-42 passed in 4.21s
+44 passed in 4.86s
 
 parser.py                 271 statements, 17 missed, 94%
 snakemake_samples.py      188 statements, 3 missed, 98%
@@ -41,7 +41,10 @@ multiqc | MultiQC complete
 
 The data directory contained the six entity/link exports plus input provenance.
 The analysis-unit download preserved the declared selection order and exact
-`MODALITY` and `LAYOUT` values.
+`MODALITY` and `LAYOUT` values. A follow-up strict render verified the current
+DayOA literals exactly: `sr|lr` modality and
+`paired_fastq|single_fastq|aligned_bam|aligned_cram|vcf` layout; legacy
+`paired` and `single` values fail parsing.
 
 ## Browser QA
 
@@ -67,7 +70,8 @@ candidate acecb8fc: 382 passed, 53 failed
 baseline  421bab7a: 340 passed, 53 failed
 ```
 
-The candidate adds exactly 42 passing native six-manifest tests. The identical
+The first candidate adds exactly 42 passing native six-manifest tests; two
+additional exact-literal regressions were added afterward. The identical
 53 failures are inherited from `.9`: fork-wide strict duplicate-source checks,
 the pre-existing AlignStats malformed fixture, and LSMC-only modules absent
 from the upstream fixture repository. No new broad-harness failure was added by

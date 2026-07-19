@@ -27,9 +27,9 @@ LIBRARIES = (
 )
 SEQUENCING_INPUTS = (
     "SEQUENCING_INPUT_UID\tLIBRARY_ID\tMODALITY\tLAYOUT\n"
-    "INPUT-LR\tLIB-LR\tlr\tsingle\n"
-    "INPUT-SR-A\tLIB-SR-A\tsr\tpaired\n"
-    "INPUT-SR-B\tLIB-SR-B\tsr\tpaired\n"
+    "INPUT-LR\tLIB-LR\tlr\tsingle_fastq\n"
+    "INPUT-SR-A\tLIB-SR-A\tsr\tpaired_fastq\n"
+    "INPUT-SR-B\tLIB-SR-B\tsr\tpaired_fastq\n"
 )
 UNIT_UID = "AU-1"
 ANALYSIS_UNITS = f"ANALYSIS_UNIT_UID\tANALYSIS_UNIT_EUID\tSAMPLEID\n{UNIT_UID}\tZ-AU-1\tS1\n"
@@ -118,9 +118,9 @@ def test_parses_exact_six_manifest_grains_and_resolves_ordered_inputs() -> None:
     assert json.loads(row["SELECTED_INPUT_ORDINALS"]) == [1, 2, 3]
     assert json.loads(row["SELECTED_INPUT_MODALITIES"]) == ["sr", "sr", "lr"]
     assert json.loads(row["SELECTED_INPUT_LAYOUTS"]) == [
-        "paired",
-        "paired",
-        "single",
+        "paired_fastq",
+        "paired_fastq",
+        "single_fastq",
     ]
 
 
@@ -153,7 +153,7 @@ def test_parse_tsv_rejects_malformed_inputs(text, message) -> None:
         (SAMPLES + "S1\tZ-OTHER\tSP1\n", parse_samples, "samples.tsv", "duplicate SAMPLEID"),
         (LIBRARIES + "LIB-LR\tZ-OTHER\tS1\n", parse_libraries, "libraries.tsv", "duplicate LIBRARY_ID"),
         (
-            SEQUENCING_INPUTS + "INPUT-LR\tLIB-LR\tlr\tsingle\n",
+            SEQUENCING_INPUTS + "INPUT-LR\tLIB-LR\tlr\tsingle_fastq\n",
             parse_sequencing_inputs,
             "sequencing_inputs.tsv",
             "duplicate SEQUENCING_INPUT_UID",
@@ -207,6 +207,20 @@ def test_join_requires_exact_contiguous_order_and_unique_input_selection() -> No
             ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\t01", 1),
             "analysis_unit_inputs.tsv",
         )
+
+
+@pytest.mark.parametrize(
+    ("column", "bad_value"),
+    [("MODALITY", "hybrid"), ("LAYOUT", "paired")],
+)
+def test_sequencing_input_literals_are_exact(column: str, bad_value: str) -> None:
+    fieldnames, first_row = SEQUENCING_INPUTS.splitlines()[:2]
+    columns = fieldnames.split("\t")
+    values = first_row.split("\t")
+    values[columns.index(column)] = bad_value
+    invalid = fieldnames + "\n" + "\t".join(values) + "\n"
+    with pytest.raises(ValueError, match=rf"{column} must be one of"):
+        parse_sequencing_inputs(invalid, "sequencing_inputs.tsv")
 
 
 def test_lineage_rejects_role_modality_and_cross_sample_conflicts() -> None:
