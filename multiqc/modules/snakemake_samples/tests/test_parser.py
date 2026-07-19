@@ -1,43 +1,59 @@
+import json
+
 import pytest
 
 from multiqc.modules.snakemake_samples.parser import (
     HYBRID_REQUIRED_COLUMNS,
     evaluate_hybrid_qc,
+    parse_analysis_unit_inputs,
+    parse_analysis_units,
     parse_gender_checks,
     parse_hybrid_qc,
     parse_libraries,
     parse_samples,
+    parse_sequencing_inputs,
     parse_specimens,
-    parse_staged_libraries,
-    parse_staged_samples,
-    parse_staged_specimens,
+    parse_tsv,
+    resolve_analysis_units,
     validate_gender_samples,
     validate_manifest_lineage,
 )
 
 
-SPECIMENS = "SPECIMEN_ID\tSPECIMEN_EUID\tBIOLOGICAL_SEX\tSAMPLESOURCE\nSP1\tspec-euid-1\tfemale\tblood\n"
-SAMPLES = "SAMPLEID\tSAMPLE_EUID\tSPECIMEN_ID\nS1\tsample-euid-1\tSP1\n"
-UNIT_UID = "explicit-analysis-unit"
+SPECIMENS = "SPECIMEN_ID\tSPECIMEN_EUID\tBIOLOGICAL_SEX\nSP1\tZ-SP-1\tfemale\n"
+SAMPLES = "SAMPLEID\tSAMPLE_EUID\tSPECIMEN_ID\nS1\tZ-SA-1\tSP1\n"
 LIBRARIES = (
-    "ANALYSIS_UNIT_UID\tLIBRARY_EUID\tSAMPLEID\tRUNID\tSEQ_VENDOR\tSEQ_PLATFORM\n"
-    f"{UNIT_UID}\tlibrary-euid-1\tS1\tRUN1\tILMN\tNOVASEQ\n"
+    "LIBRARY_ID\tLIBRARY_EUID\tSAMPLEID\nLIB-LR\tZ-LIB-LR\tS1\nLIB-SR-A\tZ-LIB-SR-A\tS1\nLIB-SR-B\tZ-LIB-SR-B\tS1\n"
+)
+SEQUENCING_INPUTS = (
+    "SEQUENCING_INPUT_UID\tLIBRARY_ID\tMODALITY\tLAYOUT\n"
+    "INPUT-LR\tLIB-LR\tlr\tsingle\n"
+    "INPUT-SR-A\tLIB-SR-A\tsr\tpaired\n"
+    "INPUT-SR-B\tLIB-SR-B\tsr\tpaired\n"
+)
+UNIT_UID = "AU-1"
+ANALYSIS_UNITS = f"ANALYSIS_UNIT_UID\tANALYSIS_UNIT_EUID\tSAMPLEID\n{UNIT_UID}\tZ-AU-1\tS1\n"
+ANALYSIS_UNIT_INPUTS = (
+    "ANALYSIS_UNIT_UID\tSEQUENCING_INPUT_UID\tROLE\tINPUT_ORDINAL\n"
+    f"{UNIT_UID}\tINPUT-SR-A\tsr\t1\n"
+    f"{UNIT_UID}\tINPUT-SR-B\tsr\t2\n"
+    f"{UNIT_UID}\tINPUT-LR\tlr\t3\n"
 )
 GENDER = (
     "Sample\treported_sex_raw\tinferred_sex_chromosome_complement\tcomparison_status\tcomparison_pass\n"
     "S1\tfemale\tXX\tPASS\ttrue\n"
 )
-STAGED_SPECIMENS = (
-    "Sample\tinput_origin\tSPECIMEN_ID\tSPECIMEN_EUID\tBIOLOGICAL_SEX\tSAMPLESOURCE\n"
-    "SP1\tinput_manifest\tSP1\tspec-euid-1\tfemale\tblood\n"
-)
-STAGED_SAMPLES = (
-    "Sample\tinput_origin\tSAMPLEID\tSAMPLE_EUID\tSPECIMEN_ID\nS1\tinput_manifest\tS1\tsample-euid-1\tSP1\n"
-)
-STAGED_LIBRARIES = (
-    "Sample\tinput_origin\tANALYSIS_UNIT_UID\tLIBRARY_EUID\tSAMPLEID\tRUNID\tSEQ_VENDOR\tSEQ_PLATFORM\n"
-    f"{UNIT_UID}\tinput_manifest\t{UNIT_UID}\tlibrary-euid-1\tS1\tRUN1\tILMN\tNOVASEQ\n"
-)
+
+
+def parsed_contract():
+    _, specimens = parse_specimens(SPECIMENS, "specimens.tsv")
+    _, samples = parse_samples(SAMPLES, "samples.tsv")
+    _, libraries = parse_libraries(LIBRARIES, "libraries.tsv")
+    _, sequencing_inputs = parse_sequencing_inputs(SEQUENCING_INPUTS, "sequencing_inputs.tsv")
+    _, analysis_units = parse_analysis_units(ANALYSIS_UNITS, "analysis_units.tsv")
+    _, links = parse_analysis_unit_inputs(ANALYSIS_UNIT_INPUTS, "analysis_unit_inputs.tsv")
+    validate_manifest_lineage(specimens, samples, libraries, sequencing_inputs, analysis_units, links)
+    return specimens, samples, libraries, sequencing_inputs, analysis_units, links
 
 
 def hybrid_text(**overrides: str) -> str:
@@ -66,111 +82,202 @@ def hybrid_text(**overrides: str) -> str:
         "detected_relative_matches": "2",
     }
     values.update(overrides)
-    header = "\t".join(HYBRID_REQUIRED_COLUMNS)
-    row = "\t".join(values[column] for column in HYBRID_REQUIRED_COLUMNS)
-    return f"{header}\n{row}\n"
+    return (
+        "\t".join(HYBRID_REQUIRED_COLUMNS)
+        + "\n"
+        + "\t".join(values[column] for column in HYBRID_REQUIRED_COLUMNS)
+        + "\n"
+    )
 
 
-def parsed_contract():
-    _, specimens = parse_specimens(SPECIMENS, "specimens.tsv")
-    _, samples = parse_samples(SAMPLES, "samples.tsv")
-    _, libraries = parse_libraries(LIBRARIES, "libraries.tsv")
-    _, gender = parse_gender_checks(GENDER, "reported_vs_inferred_sex_check_mqc.tsv")
-    validate_manifest_lineage(specimens, samples, libraries)
-    validate_gender_samples(specimens, samples, gender)
-    return specimens, samples, libraries, gender
-
-
-def test_parses_three_distinct_manifest_grains_and_exact_keys() -> None:
-    specimen_fields, specimens = parse_specimens(SPECIMENS, "specimens.tsv")
-    sample_fields, samples = parse_samples(SAMPLES, "samples.tsv")
-    library_fields, libraries = parse_libraries(LIBRARIES, "libraries.tsv")
-
-    assert specimen_fields == ["SPECIMEN_ID", "SPECIMEN_EUID", "BIOLOGICAL_SEX", "SAMPLESOURCE"]
-    assert sample_fields == ["SAMPLEID", "SAMPLE_EUID", "SPECIMEN_ID"]
-    assert library_fields[0] == "ANALYSIS_UNIT_UID"
+def test_parses_exact_six_manifest_grains_and_resolves_ordered_inputs() -> None:
+    specimens, samples, libraries, sequencing_inputs, analysis_units, links = parsed_contract()
     assert list(specimens) == ["SP1"]
     assert list(samples) == ["S1"]
-    assert list(libraries) == [UNIT_UID]
-    validate_manifest_lineage(specimens, samples, libraries)
+    assert list(libraries) == ["LIB-LR", "LIB-SR-A", "LIB-SR-B"]
+    assert list(sequencing_inputs) == ["INPUT-LR", "INPUT-SR-A", "INPUT-SR-B"]
+    assert list(analysis_units) == [UNIT_UID]
+    assert list(links) == [
+        f"{UNIT_UID}|1|INPUT-SR-A",
+        f"{UNIT_UID}|2|INPUT-SR-B",
+        f"{UNIT_UID}|3|INPUT-LR",
+    ]
+
+    row = resolve_analysis_units(analysis_units, libraries, sequencing_inputs, links)[UNIT_UID]
+    assert json.loads(row["SELECTED_LIBRARY_IDS"]) == [
+        "LIB-SR-A",
+        "LIB-SR-B",
+        "LIB-LR",
+    ]
+    assert json.loads(row["SELECTED_SEQUENCING_INPUT_UIDS"]) == [
+        "INPUT-SR-A",
+        "INPUT-SR-B",
+        "INPUT-LR",
+    ]
+    assert json.loads(row["SELECTED_INPUT_ROLES"]) == ["sr", "sr", "lr"]
+    assert json.loads(row["SELECTED_INPUT_ORDINALS"]) == [1, 2, 3]
+    assert json.loads(row["SELECTED_INPUT_MODALITIES"]) == ["sr", "sr", "lr"]
+    assert json.loads(row["SELECTED_INPUT_LAYOUTS"]) == [
+        "paired",
+        "paired",
+        "single",
+    ]
 
 
-def test_staged_manifests_reconcile_exactly_to_raw_manifests() -> None:
-    _, raw_specimens = parse_specimens(SPECIMENS, "specimens.tsv")
-    _, staged_specimens = parse_staged_specimens(STAGED_SPECIMENS, "input_specimens_mqc.tsv")
-    _, raw_samples = parse_samples(SAMPLES, "samples.tsv")
-    _, staged_samples = parse_staged_samples(STAGED_SAMPLES, "input_samples_mqc.tsv")
-    _, raw_libraries = parse_libraries(LIBRARIES, "libraries.tsv")
-    _, staged_libraries = parse_staged_libraries(STAGED_LIBRARIES, "input_libraries_mqc.tsv")
-
-    assert staged_specimens == raw_specimens
-    assert staged_samples == raw_samples
-    assert staged_libraries == raw_libraries
+def test_old_library_as_analysis_unit_shape_is_rejected() -> None:
+    old = "ANALYSIS_UNIT_UID\tSAMPLEID\nAU-1\tS1\n"
+    with pytest.raises(ValueError, match="missing required column.*LIBRARY_ID"):
+        parse_libraries(old, "libraries.tsv")
 
 
-def test_staged_manifests_require_exact_declared_keys_and_origins() -> None:
-    with pytest.raises(ValueError, match="Sample must exactly match SPECIMEN_ID"):
-        parse_staged_specimens(
-            STAGED_SPECIMENS.replace("SP1\tinput_manifest", "OTHER\tinput_manifest"), "specimens.tsv"
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        (None, "Could not read"),
+        ("", "no header"),
+        ("A\tA\n1\t2\n", "duplicate column"),
+        ("A\n1\textra\n", "more fields"),
+        ("A\tB\n1\n", "fewer fields"),
+        ("A\tB\n", "no data rows"),
+    ],
+)
+def test_parse_tsv_rejects_malformed_inputs(text, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        parse_tsv(text, "bad.tsv", "test")
+
+
+@pytest.mark.parametrize(
+    ("text", "parser", "filename", "message"),
+    [
+        (SPECIMENS + "SP1\tZ-OTHER\tmale\n", parse_specimens, "specimens.tsv", "duplicate SPECIMEN_ID"),
+        (SAMPLES + "S1\tZ-OTHER\tSP1\n", parse_samples, "samples.tsv", "duplicate SAMPLEID"),
+        (LIBRARIES + "LIB-LR\tZ-OTHER\tS1\n", parse_libraries, "libraries.tsv", "duplicate LIBRARY_ID"),
+        (
+            SEQUENCING_INPUTS + "INPUT-LR\tLIB-LR\tlr\tsingle\n",
+            parse_sequencing_inputs,
+            "sequencing_inputs.tsv",
+            "duplicate SEQUENCING_INPUT_UID",
+        ),
+        (
+            ANALYSIS_UNITS + f"{UNIT_UID}\tZ-OTHER\tS1\n",
+            parse_analysis_units,
+            "analysis_units.tsv",
+            "duplicate ANALYSIS_UNIT_UID",
+        ),
+    ],
+)
+def test_duplicate_entity_keys_fail(text, parser, filename, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        parser(text, filename)
+
+
+def test_join_requires_exact_contiguous_order_and_unique_input_selection() -> None:
+    with pytest.raises(ValueError, match="exact contiguous order"):
+        parse_analysis_unit_inputs(
+            ANALYSIS_UNIT_INPUTS.replace("\tsr\t2\n", "\tsr\t3\n", 1),
+            "analysis_unit_inputs.tsv",
         )
-    with pytest.raises(ValueError, match="Sample must exactly match SAMPLEID"):
-        parse_staged_samples(STAGED_SAMPLES.replace("S1\tinput_manifest", "OTHER\tinput_manifest"), "samples.tsv")
-    with pytest.raises(ValueError, match="Sample must exactly match ANALYSIS_UNIT_UID"):
-        parse_staged_libraries(STAGED_LIBRARIES.replace(UNIT_UID, "OTHER", 1), "libraries.tsv")
-    with pytest.raises(ValueError, match="input_origin must be one of"):
-        parse_staged_libraries(STAGED_LIBRARIES.replace("input_manifest", "unknown"), "libraries.tsv")
+    with pytest.raises(ValueError, match="more than once"):
+        parse_analysis_unit_inputs(
+            ANALYSIS_UNIT_INPUTS.replace("INPUT-SR-B", "INPUT-SR-A"),
+            "analysis_unit_inputs.tsv",
+        )
+    with pytest.raises(ValueError, match="missing required column"):
+        parse_analysis_unit_inputs(
+            "ANALYSIS_UNIT_UID\tSEQUENCING_INPUT_UID\tROLE\nAU-1\tI-1\tsr\n",
+            "analysis_unit_inputs.tsv",
+        )
+    with pytest.raises(ValueError, match="blank required column"):
+        parse_analysis_unit_inputs(
+            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\t\t1", 1),
+            "analysis_unit_inputs.tsv",
+        )
+    with pytest.raises(ValueError, match="ROLE must be one of"):
+        parse_analysis_unit_inputs(
+            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tother\t1", 1),
+            "analysis_unit_inputs.tsv",
+        )
+    with pytest.raises(ValueError, match="positive integer"):
+        parse_analysis_unit_inputs(
+            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\tbad", 1),
+            "analysis_unit_inputs.tsv",
+        )
+    with pytest.raises(ValueError, match="canonical positive integer"):
+        parse_analysis_unit_inputs(
+            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\t01", 1),
+            "analysis_unit_inputs.tsv",
+        )
 
 
-def test_analysis_unit_uid_is_required_and_authoritative() -> None:
-    _, libraries = parse_libraries("ANALYSIS_UNIT_UID\tSAMPLEID\nexplicit-unit\tS1\n", "libraries.tsv")
-    assert list(libraries) == ["explicit-unit"]
-    with pytest.raises(ValueError, match="missing required column.*ANALYSIS_UNIT_UID"):
-        parse_libraries("SAMPLEID\nS1\n", "libraries.tsv")
-    with pytest.raises(ValueError, match="blank ANALYSIS_UNIT_UID"):
-        parse_libraries("ANALYSIS_UNIT_UID\tSAMPLEID\n\tS1\n", "libraries.tsv")
+def test_lineage_rejects_role_modality_and_cross_sample_conflicts() -> None:
+    specimens, samples, libraries, sequencing_inputs, analysis_units, links = parsed_contract()
+    mismatched_inputs = {
+        key: ({**row, "MODALITY": "lr"} if key == "INPUT-SR-A" else row) for key, row in sequencing_inputs.items()
+    }
+    with pytest.raises(ValueError, match="ROLE 'sr'.*MODALITY 'lr'"):
+        validate_manifest_lineage(
+            specimens,
+            samples,
+            libraries,
+            mismatched_inputs,
+            analysis_units,
+            links,
+        )
+
+    other_samples = {**samples, "S2": {**samples["S1"], "SAMPLEID": "S2"}}
+    other_libraries = {key: ({**row, "SAMPLEID": "S2"} if key == "LIB-SR-A" else row) for key, row in libraries.items()}
+    with pytest.raises(ValueError, match="not declared sample"):
+        validate_manifest_lineage(
+            specimens,
+            other_samples,
+            other_libraries,
+            sequencing_inputs,
+            analysis_units,
+            links,
+        )
 
 
-def test_duplicates_and_orphan_lineage_fail_hard() -> None:
-    with pytest.raises(ValueError, match="duplicate SPECIMEN_ID 'SP1'"):
-        parse_specimens(SPECIMENS + "SP1\tother\tmale\tsaliva\n", "specimens.tsv")
-    with pytest.raises(ValueError, match="duplicate SAMPLEID 'S1'"):
-        parse_samples(SAMPLES + "S1\tother\tSP1\n", "samples.tsv")
-    with pytest.raises(ValueError, match=f"duplicate ANALYSIS_UNIT_UID '{UNIT_UID}'"):
-        parse_libraries(LIBRARIES + LIBRARIES.splitlines()[1] + "\n", "libraries.tsv")
+def test_lineage_rejects_orphans_and_unselected_entities() -> None:
+    specimens, samples, libraries, sequencing_inputs, analysis_units, links = parsed_contract()
+    with pytest.raises(ValueError, match="absent from specimens.tsv"):
+        validate_manifest_lineage({}, samples, libraries, sequencing_inputs, analysis_units, links)
+    with pytest.raises(ValueError, match="absent from libraries.tsv"):
+        validate_manifest_lineage(
+            specimens,
+            samples,
+            libraries,
+            {**sequencing_inputs, "ORPHAN": {**sequencing_inputs["INPUT-LR"], "LIBRARY_ID": "UNKNOWN"}},
+            analysis_units,
+            links,
+        )
+    with pytest.raises(ValueError, match="unknown ANALYSIS_UNIT_UID"):
+        validate_manifest_lineage(
+            specimens,
+            samples,
+            libraries,
+            sequencing_inputs,
+            analysis_units,
+            {**links, "orphan": {**next(iter(links.values())), "ANALYSIS_UNIT_UID": "UNKNOWN"}},
+        )
+    with pytest.raises(ValueError, match="sequencing input key.*no required child"):
+        validate_manifest_lineage(
+            specimens,
+            samples,
+            libraries,
+            {**sequencing_inputs, "UNUSED": {**sequencing_inputs["INPUT-LR"], "SEQUENCING_INPUT_UID": "UNUSED"}},
+            analysis_units,
+            links,
+        )
 
-    _, specimens = parse_specimens(SPECIMENS, "specimens.tsv")
-    _, samples = parse_samples(SAMPLES.replace("\tSP1\n", "\tUNKNOWN\n"), "samples.tsv")
-    _, libraries = parse_libraries(LIBRARIES, "libraries.tsv")
-    with pytest.raises(ValueError, match="absent from specimens.tsv: UNKNOWN"):
-        validate_manifest_lineage(specimens, samples, libraries)
 
-    _, samples = parse_samples(SAMPLES, "samples.tsv")
-    _, libraries = parse_libraries(LIBRARIES.replace("\tS1\t", "\tUNKNOWN\t"), "libraries.tsv")
-    with pytest.raises(ValueError, match="absent from samples.tsv: UNKNOWN"):
-        validate_manifest_lineage(specimens, samples, libraries)
-
-
-def test_gender_checks_match_samples_and_specimen_provenance() -> None:
-    _, specimens = parse_specimens(SPECIMENS, "specimens.tsv")
-    _, samples = parse_samples(SAMPLES, "samples.tsv")
+def test_gender_and_hybrid_qc_are_analysis_unit_scoped() -> None:
+    specimens, samples, _libraries, _inputs, analysis_units, _links = parsed_contract()
     _, gender = parse_gender_checks(GENDER, "gender.tsv")
     validate_gender_samples(specimens, samples, gender)
-
-    _, mismatched = parse_gender_checks(GENDER.replace("S1\tfemale", "S1\tmale"), "gender.tsv")
-    with pytest.raises(ValueError, match="does not match specimens.tsv"):
-        validate_gender_samples(specimens, samples, mismatched)
-
-
-def test_hybrid_qc_all_checks_pass() -> None:
-    specimens, samples, libraries, gender = parsed_contract()
-    _, hybrid = parse_hybrid_qc(hybrid_text(), "hybrid_seq_batch_qc.tsv")
-    evaluated = evaluate_hybrid_qc(hybrid, libraries, specimens, samples, gender)
-
-    row = evaluated[UNIT_UID]
+    _, hybrid = parse_hybrid_qc(hybrid_text(), "hybrid.tsv")
+    row = evaluate_hybrid_qc(hybrid, analysis_units, specimens, samples, gender)[UNIT_UID]
     assert row["overall_status"] == "PASS"
     assert row["failed_checks"] == 0
-    assert row["gender_check"] == "PASS"
-    assert row["relative_matches_check"] == "PASS"
 
 
 @pytest.mark.parametrize(
@@ -186,24 +293,45 @@ def test_hybrid_qc_all_checks_pass() -> None:
     ],
 )
 def test_hybrid_strict_boundaries_fail(column: str, value: str, check: str) -> None:
-    specimens, samples, libraries, gender = parsed_contract()
-    _, hybrid = parse_hybrid_qc(hybrid_text(**{column: value}), "hybrid_seq_batch_qc.tsv")
-    row = evaluate_hybrid_qc(hybrid, libraries, specimens, samples, gender)[UNIT_UID]
+    specimens, samples, _libraries, _inputs, analysis_units, _links = parsed_contract()
+    _, gender = parse_gender_checks(GENDER, "gender.tsv")
+    _, hybrid = parse_hybrid_qc(hybrid_text(**{column: value}), "hybrid.tsv")
+    row = evaluate_hybrid_qc(hybrid, analysis_units, specimens, samples, gender)[UNIT_UID]
     assert row[check] == "FAIL"
     assert row["overall_status"] == "FAIL"
 
 
+def test_hybrid_rows_must_exactly_cover_analysis_units() -> None:
+    specimens, samples, _libraries, _inputs, analysis_units, _links = parsed_contract()
+    _, gender = parse_gender_checks(GENDER, "gender.tsv")
+    with pytest.raises(ValueError, match="missing analysis units"):
+        evaluate_hybrid_qc({}, analysis_units, specimens, samples, gender)
+
+
+def test_gender_checks_match_samples_and_specimen_provenance() -> None:
+    specimens, samples, _libraries, _inputs, _analysis_units, _links = parsed_contract()
+    _, gender = parse_gender_checks(GENDER, "gender.tsv")
+    validate_gender_samples(specimens, samples, gender)
+
+    _, mismatched = parse_gender_checks(GENDER.replace("S1\tfemale", "S1\tmale"), "gender.tsv")
+    with pytest.raises(ValueError, match="does not match specimens.tsv"):
+        validate_gender_samples(specimens, samples, mismatched)
+    with pytest.raises(ValueError, match="must contain BIOLOGICAL_SEX"):
+        validate_gender_samples({"SP1": {"SPECIMEN_ID": "SP1"}}, samples, gender)
+    with pytest.raises(ValueError, match="missing check rows"):
+        validate_gender_samples(specimens, samples, {})
+    with pytest.raises(ValueError, match="invalid comparison_pass"):
+        parse_gender_checks(GENDER.replace("PASS\ttrue", "PASS\tmaybe"), "gender.tsv")
+    with pytest.raises(ValueError, match="PASS row must set"):
+        parse_gender_checks(GENDER.replace("PASS\ttrue", "PASS\tfalse"), "gender.tsv")
+
+
 def test_uniformity_bounds_are_inclusive() -> None:
-    specimens, samples, libraries, gender = parsed_contract()
-    _, hybrid = parse_hybrid_qc(hybrid_text(coverage_uniformity="0.8"), "hybrid_seq_batch_qc.tsv")
-    row = evaluate_hybrid_qc(hybrid, libraries, specimens, samples, gender)[UNIT_UID]
+    specimens, samples, _libraries, _inputs, analysis_units, _links = parsed_contract()
+    _, gender = parse_gender_checks(GENDER, "gender.tsv")
+    _, hybrid = parse_hybrid_qc(hybrid_text(coverage_uniformity="0.8"), "hybrid.tsv")
+    row = evaluate_hybrid_qc(hybrid, analysis_units, specimens, samples, gender)[UNIT_UID]
     assert row["uniformity_check"] == "PASS"
-
-
-def test_hybrid_rows_must_exactly_cover_libraries() -> None:
-    specimens, samples, libraries, gender = parsed_contract()
-    with pytest.raises(ValueError, match="missing libraries"):
-        evaluate_hybrid_qc({}, libraries, specimens, samples, gender)
 
 
 def test_hybrid_rejects_invalid_percent_and_schema() -> None:
@@ -219,5 +347,25 @@ def test_hybrid_rejects_invalid_percent_and_schema() -> None:
     values = dict(zip(HYBRID_REQUIRED_COLUMNS, hybrid_text().splitlines()[1].split("\t")))
     with pytest.raises(ValueError, match="required schema order"):
         parse_hybrid_qc(
-            "\t".join(reordered) + "\n" + "\t".join(values[column] for column in reordered) + "\n", "hybrid.tsv"
+            "\t".join(reordered) + "\n" + "\t".join(values[column] for column in reordered) + "\n",
+            "hybrid.tsv",
         )
+    with pytest.raises(ValueError, match="must be numeric"):
+        parse_hybrid_qc(hybrid_text(contamination_estimate_pct="not-a-number"), "hybrid.tsv")
+    with pytest.raises(ValueError, match="must be finite"):
+        parse_hybrid_qc(hybrid_text(contamination_estimate_pct="nan"), "hybrid.tsv")
+    with pytest.raises(ValueError, match="must be nonnegative"):
+        parse_hybrid_qc(hybrid_text(long_read_mean_coverage="-1"), "hybrid.tsv")
+    with pytest.raises(ValueError, match="uniformity minimum exceeds maximum"):
+        parse_hybrid_qc(hybrid_text(coverage_uniformity_min="2"), "hybrid.tsv")
+
+
+def test_hybrid_rejects_wrong_sample_and_unknown_units() -> None:
+    specimens, samples, _libraries, _inputs, analysis_units, _links = parsed_contract()
+    _, gender = parse_gender_checks(GENDER, "gender.tsv")
+    _, wrong_sample = parse_hybrid_qc(hybrid_text(sample_id="OTHER"), "hybrid.tsv")
+    with pytest.raises(ValueError, match="does not match analysis_units.tsv"):
+        evaluate_hybrid_qc(wrong_sample, analysis_units, specimens, samples, gender)
+    _, unknown = parse_hybrid_qc(hybrid_text(analysis_unit_uid="AU-OTHER"), "hybrid.tsv")
+    with pytest.raises(ValueError, match="unknown analysis units"):
+        evaluate_hybrid_qc(unknown, analysis_units, specimens, samples, gender)

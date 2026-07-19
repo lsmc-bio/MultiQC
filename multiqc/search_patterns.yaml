@@ -334,14 +334,17 @@ snakemake_benchmarks/combined:
   - fn: "benchmarks_summary.tsv"
   - fn: "rules_benchmark_data_mqc.tsv"
 snakemake_samples/specimens:
-  - fn: "specimens.tsv"
-  - fn: "input_specimens_mqc.tsv"
+  fn: "specimens.tsv"
 snakemake_samples/samples:
-  - fn: "samples.tsv"
-  - fn: "input_samples_mqc.tsv"
+  fn: "samples.tsv"
 snakemake_samples/libraries:
-  - fn: "libraries.tsv"
-  - fn: "input_libraries_mqc.tsv"
+  fn: "libraries.tsv"
+snakemake_samples/sequencing_inputs:
+  fn: "sequencing_inputs.tsv"
+snakemake_samples/analysis_units:
+  fn: "analysis_units.tsv"
+snakemake_samples/analysis_unit_inputs:
+  fn: "analysis_unit_inputs.tsv"
 snakemake_samples/gender_checks:
   fn: "reported_vs_inferred_sex_check_mqc.tsv"
 snakemake_samples/hybrid_qc:
