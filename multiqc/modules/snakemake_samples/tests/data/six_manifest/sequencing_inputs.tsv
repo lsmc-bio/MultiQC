@@ -1,0 +1,4 @@
+SEQUENCING_INPUT_UID	LIBRARY_ID	MODALITY	LAYOUT
+INPUT-LR	LIB-LR	lr	single_fastq
+INPUT-SR-A	LIB-SR-A	sr	paired_fastq
+INPUT-SR-B	LIB-SR-B	sr	paired_fastq

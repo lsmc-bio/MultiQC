@@ -12,14 +12,15 @@ from multiqc.types import LoadedFileDict
 from .parser import (
     HYBRID_REQUIRED_COLUMNS,
     evaluate_hybrid_qc,
+    parse_analysis_unit_inputs,
+    parse_analysis_units,
     parse_libraries,
     parse_gender_checks,
     parse_hybrid_qc,
     parse_samples,
+    parse_sequencing_inputs,
     parse_specimens,
-    parse_staged_libraries,
-    parse_staged_samples,
-    parse_staged_specimens,
+    resolve_analysis_units,
     validate_gender_samples,
     validate_manifest_lineage,
     Value,
@@ -32,21 +33,27 @@ STATUS_COLORS = {"PASS": "#d1e7dd", "FAIL": "#f8d7da"}
 
 class MultiqcModule(BaseMultiqcModule):
     """
-    Snakemake Specimens / Samples / Libraries reports the three DayOA 12
-    source manifests and per-library Hybrid Seq QC.
+    Snakemake Specimens / Samples / Libraries / Inputs / Analysis Units
+    reports the exact DayOA 13 six-manifest model.
 
-    The module recognizes six native TSV inputs:
+    Five entity manifests retain their source grains and keys:
 
-    - `specimens.tsv` with one unique `SPECIMEN_ID` row per biospecimen.
-    - `samples.tsv` with one unique `SAMPLEID` row per aliquot/sample/order
-      and an exact `SPECIMEN_ID` foreign key.
-    - `libraries.tsv` with one row per library or analysis unit, exact
-      `ANALYSIS_UNIT_UID`, and exact `SAMPLEID` foreign key.
-    - `reported_vs_inferred_sex_check_mqc.tsv` with `Sample`,
-      `reported_sex_raw`, `inferred_sex_chromosome_complement`,
-      `comparison_status`, and `comparison_pass` columns.
-    - `hybrid_seq_batch_qc.tsv` with one schema version 1 row for every
-      `libraries.tsv` row. Required columns are:
+    - `specimens.tsv`, keyed by `SPECIMEN_ID`.
+    - `samples.tsv`, keyed by `SAMPLEID` with a specimen foreign key.
+    - `libraries.tsv`, keyed by physical `LIBRARY_ID` with a sample foreign key.
+    - `sequencing_inputs.tsv`, keyed by `SEQUENCING_INPUT_UID` with exact
+      `LIBRARY_ID`, `MODALITY`, and `LAYOUT` fields.
+    - `analysis_units.tsv`, keyed by `ANALYSIS_UNIT_UID` with a sample foreign key.
+
+    `analysis_unit_inputs.tsv` is the required ordered many-to-many join. It
+    retains exact analysis-unit and sequencing-input identifiers, `ROLE`, and
+    canonical `INPUT_ORDINAL`. The analysis-unit section also exposes resolved
+    ordered library, input, role, modality, and layout arrays derived solely
+    from this join.
+
+    The optional `reported_vs_inferred_sex_check_mqc.tsv` retains sex-check
+    evidence. The optional `hybrid_seq_batch_qc.tsv` has one schema version 1
+    row for every `analysis_units.tsv` row. Required columns are:
 
       `schema_version`, `analysis_unit_uid`, `sample_id`,
       `contamination_estimate_pct`, `contamination_max_pct`,
@@ -73,55 +80,63 @@ class MultiqcModule(BaseMultiqcModule):
 
     def __init__(self):
         super().__init__(
-            name="Snakemake Specimens / Samples / Libraries",
+            name="Snakemake Specimens / Samples / Libraries / Inputs / Analysis Units",
             anchor="snakemake-samples",
             href="https://snakemake.readthedocs.io/",
-            info="Reports exact DayOA specimen, sample, and library manifests, gender checks, and per-library Hybrid Seq Batch QC.",
+            info=(
+                "Reports exact DayOA specimen, sample, physical-library, sequencing-input, "
+                "analysis-unit, and ordered input-selection manifests."
+            ),
             doi="10.1093/bioinformatics/bts480",
         )
 
-        self.specimen_fields, raw_specimens, specimen_files = self._collect_manifests(
-            "snakemake_samples/specimens",
-            "specimens",
-            "specimens.tsv",
-            "input_specimens_mqc.tsv",
-            parse_specimens,
-            parse_staged_specimens,
+        self.specimen_fields, raw_specimens, specimen_files = self._collect_manifest(
+            "snakemake_samples/specimens", "specimens", parse_specimens
         )
-        self.sample_fields, raw_samples, sample_files = self._collect_manifests(
-            "snakemake_samples/samples",
-            "samples",
-            "samples.tsv",
-            "input_samples_mqc.tsv",
-            parse_samples,
-            parse_staged_samples,
+        self.sample_fields, raw_samples, sample_files = self._collect_manifest(
+            "snakemake_samples/samples", "samples", parse_samples
         )
-        self.library_fields, raw_libraries, library_files = self._collect_manifests(
-            "snakemake_samples/libraries",
-            "libraries",
-            "libraries.tsv",
-            "input_libraries_mqc.tsv",
-            parse_libraries,
-            parse_staged_libraries,
+        self.library_fields, raw_libraries, library_files = self._collect_manifest(
+            "snakemake_samples/libraries", "libraries", parse_libraries
+        )
+        self.sequencing_input_fields, raw_sequencing_inputs, sequencing_input_files = self._collect_manifest(
+            "snakemake_samples/sequencing_inputs", "sequencing inputs", parse_sequencing_inputs
+        )
+        self.analysis_unit_fields, raw_analysis_units, analysis_unit_files = self._collect_manifest(
+            "snakemake_samples/analysis_units", "analysis units", parse_analysis_units
+        )
+        self.analysis_unit_input_fields, raw_analysis_unit_inputs, analysis_unit_input_files = self._collect_manifest(
+            "snakemake_samples/analysis_unit_inputs", "analysis unit inputs", parse_analysis_unit_inputs
         )
         self.gender_fields, raw_gender, gender_files = self._collect_identical_files(
             "snakemake_samples/gender_checks", "gender check", parse_gender_checks
         )
         self.hybrid_fields, parsed_hybrid, hybrid_files = self._collect_hybrid_files()
-        if not any((specimen_files, sample_files, library_files, gender_files, hybrid_files)):
+        manifest_files = (
+            specimen_files,
+            sample_files,
+            library_files,
+            sequencing_input_files,
+            analysis_unit_files,
+            analysis_unit_input_files,
+        )
+        if not any((*manifest_files, gender_files, hybrid_files)):
             raise ModuleNoSamplesFound
         missing_manifests = [
             label
             for label, files in (
-                ("specimens.tsv or input_specimens_mqc.tsv", specimen_files),
-                ("samples.tsv or input_samples_mqc.tsv", sample_files),
-                ("libraries.tsv or input_libraries_mqc.tsv", library_files),
+                ("specimens.tsv", specimen_files),
+                ("samples.tsv", sample_files),
+                ("libraries.tsv", library_files),
+                ("sequencing_inputs.tsv", sequencing_input_files),
+                ("analysis_units.tsv", analysis_unit_files),
+                ("analysis_unit_inputs.tsv", analysis_unit_input_files),
             )
             if not files
         ]
         if missing_manifests:
             raise ValueError(
-                "Snakemake Specimens / Samples / Libraries requires the complete three-manifest set; missing: "
+                "Snakemake manifest reporting requires the complete DayOA 13 six-manifest set; missing: "
                 + ", ".join(missing_manifests)
             )
 
@@ -129,13 +144,32 @@ class MultiqcModule(BaseMultiqcModule):
             "specimens": self._manifest_provenance(specimen_files, raw_specimens),
             "samples": self._manifest_provenance(sample_files, raw_samples),
             "libraries": self._manifest_provenance(library_files, raw_libraries),
+            "sequencing_inputs": self._manifest_provenance(sequencing_input_files, raw_sequencing_inputs),
+            "analysis_units": self._manifest_provenance(analysis_unit_files, raw_analysis_units),
+            "analysis_unit_inputs": self._manifest_provenance(analysis_unit_input_files, raw_analysis_unit_inputs),
             "gender_checks": {"source_paths": sorted(self._source_path(source) for source in gender_files)},
             "hybrid_qc": {"source_paths": sorted(self._source_path(source) for source in hybrid_files)},
         }
-        validate_manifest_lineage(raw_specimens, raw_samples, raw_libraries)
+        validate_manifest_lineage(
+            raw_specimens,
+            raw_samples,
+            raw_libraries,
+            raw_sequencing_inputs,
+            raw_analysis_units,
+            raw_analysis_unit_inputs,
+        )
+        resolved_analysis_units = resolve_analysis_units(
+            raw_analysis_units,
+            raw_libraries,
+            raw_sequencing_inputs,
+            raw_analysis_unit_inputs,
+        )
         self._add_sources(specimen_files[0], raw_specimens, "specimens")
         self._add_sources(sample_files[0], raw_samples, "samples")
         self._add_sources(library_files[0], raw_libraries, "libraries")
+        self._add_sources(sequencing_input_files[0], raw_sequencing_inputs, "sequencing_inputs")
+        self._add_sources(analysis_unit_files[0], raw_analysis_units, "analysis_units")
+        self._add_sources(analysis_unit_input_files[0], raw_analysis_unit_inputs, "analysis_unit_inputs")
 
         if gender_files:
             validate_gender_samples(raw_specimens, raw_samples, raw_gender)
@@ -145,24 +179,49 @@ class MultiqcModule(BaseMultiqcModule):
         if hybrid_files:
             if not gender_files:
                 raise ValueError(
-                    "hybrid_seq_batch_qc.tsv requires the three manifests and reported_vs_inferred_sex_check_mqc.tsv"
+                    "hybrid_seq_batch_qc.tsv requires the six manifests and reported_vs_inferred_sex_check_mqc.tsv"
                 )
-            raw_hybrid = evaluate_hybrid_qc(parsed_hybrid, raw_libraries, raw_specimens, raw_samples, raw_gender)
+            raw_hybrid = evaluate_hybrid_qc(
+                parsed_hybrid,
+                raw_analysis_units,
+                raw_specimens,
+                raw_samples,
+                raw_gender,
+            )
             self._add_sources(hybrid_files[0], raw_hybrid, "hybrid_qc")
 
         self.specimens_data = self.ignore_samples(raw_specimens)
         self.samples_data = self.ignore_samples(raw_samples)
         self.libraries_data = self.ignore_samples(raw_libraries)
+        self.sequencing_inputs_data = self.ignore_samples(raw_sequencing_inputs)
+        self.analysis_units_data = self.ignore_samples(resolved_analysis_units)
+        self.analysis_unit_inputs_data = self.ignore_samples(raw_analysis_unit_inputs)
         self.gender_data = self.ignore_samples(raw_gender)
         self.hybrid_data = self.ignore_samples(raw_hybrid)
-        if not any((self.specimens_data, self.samples_data, self.libraries_data, self.gender_data, self.hybrid_data)):
+        if not any(
+            (
+                self.specimens_data,
+                self.samples_data,
+                self.libraries_data,
+                self.sequencing_inputs_data,
+                self.analysis_units_data,
+                self.analysis_unit_inputs_data,
+                self.gender_data,
+                self.hybrid_data,
+            )
+        ):
             raise ModuleNoSamplesFound
 
         log.info(
-            "Found %d specimens, %d samples, %d libraries, %d gender checks, and %d Hybrid Seq QC rows",
+            "Found %d specimens, %d samples, %d libraries, %d sequencing inputs, "
+            "%d analysis units, %d analysis-unit input links, %d gender checks, "
+            "and %d Hybrid Seq QC rows",
             len(self.specimens_data),
             len(self.samples_data),
             len(self.libraries_data),
+            len(self.sequencing_inputs_data),
+            len(self.analysis_units_data),
+            len(self.analysis_unit_inputs_data),
             len(self.gender_data),
             len(self.hybrid_data),
         )
@@ -176,32 +235,33 @@ class MultiqcModule(BaseMultiqcModule):
             self.write_data_file(self.samples_data, "multiqc_snakemake_samples")
         if self.libraries_data:
             self.write_data_file(self.libraries_data, "multiqc_snakemake_libraries")
+        if self.sequencing_inputs_data:
+            self.write_data_file(self.sequencing_inputs_data, "multiqc_snakemake_sequencing_inputs")
+        if self.analysis_units_data:
+            self.write_data_file(self.analysis_units_data, "multiqc_snakemake_analysis_units")
+        if self.analysis_unit_inputs_data:
+            self.write_data_file(
+                self.analysis_unit_inputs_data,
+                "multiqc_snakemake_analysis_unit_inputs",
+            )
         if self.gender_data:
             self.write_data_file(self.gender_data, "multiqc_snakemake_gender_checks")
         if self.hybrid_data:
             self.write_data_file(self.hybrid_data, "multiqc_hybrid_seq_batch_qc")
         self.write_data_file(self.input_provenance, "multiqc_snakemake_samples_input_provenance")
 
-    def _collect_manifests(
+    def _collect_manifest(
         self,
         search_key: str,
         label: str,
-        raw_filename: str,
-        staged_filename: str,
-        raw_parser: Callable[[Optional[str], str], Tuple[List[str], Dict[str, Dict[str, str]]]],
-        staged_parser: Callable[[Optional[str], str], Tuple[List[str], Dict[str, Dict[str, str]]]],
+        parser: Callable[[Optional[str], str], Tuple[List[str], Dict[str, Dict[str, str]]]],
     ) -> Tuple[List[str], Dict[str, Dict[str, str]], List[LoadedFileDict[str]]]:
         files = list(self.find_log_files(search_key))
         fields: List[str] = []
         canonical: Optional[Dict[str, Dict[str, str]]] = None
         accepted: List[LoadedFileDict[str]] = []
         for source in files:
-            if source["fn"] == raw_filename:
-                parsed_fields, parsed = raw_parser(source["f"], source["fn"])
-            elif source["fn"] == staged_filename:
-                parsed_fields, parsed = staged_parser(source["f"], source["fn"])
-            else:
-                raise ValueError(f"Unexpected {label} input filename: {self._source_path(source)}")
+            parsed_fields, parsed = parser(source["f"], source["fn"])
             if canonical is not None and parsed != canonical:
                 paths = sorted([*(self._source_path(item) for item in accepted), self._source_path(source)])
                 raise ValueError(f"Conflicting normalized {label} inputs: {', '.join(paths)}")
@@ -317,7 +377,9 @@ class MultiqcModule(BaseMultiqcModule):
         configured_headers = self.get_general_stats_headers(all_headers=headers)
         if configured_headers:
             self.general_stats_addcols(
-                self.hybrid_data, configured_headers, namespace="Snakemake Specimens / Samples / Libraries"
+                self.hybrid_data,
+                configured_headers,
+                namespace="Snakemake Manifest Lineage",
             )
 
     def _add_sections(self) -> None:
@@ -359,15 +421,68 @@ class MultiqcModule(BaseMultiqcModule):
                 name="Libraries",
                 anchor="snakemake-samples-libraries",
                 description=(
-                    "Source-faithful rows from <code>libraries.tsv</code>, keyed by exact "
-                    "<code>ANALYSIS_UNIT_UID</code> and retaining the <code>SAMPLEID</code> parent."
+                    "Source-faithful physical-library rows from <code>libraries.tsv</code>, keyed by exact "
+                    "<code>LIBRARY_ID</code> and retaining the <code>SAMPLEID</code> parent."
                 ),
                 plot=table.plot(
                     self.libraries_data,
                     table_headers(self.libraries_data),
                     {
                         "id": "snakemake_libraries_table",
-                        "title": "Snakemake Specimens / Samples / Libraries: Libraries",
+                        "title": "Snakemake Manifest Lineage: Physical Libraries",
+                        "no_violin": True,
+                    },
+                ),
+            )
+        if self.sequencing_inputs_data:
+            self.add_section(
+                name="Sequencing Inputs",
+                anchor="snakemake-samples-sequencing-inputs",
+                description=(
+                    "Source-faithful rows from <code>sequencing_inputs.tsv</code>, keyed by exact "
+                    "<code>SEQUENCING_INPUT_UID</code>. <code>MODALITY</code> and <code>LAYOUT</code> "
+                    "are displayed exactly as supplied."
+                ),
+                plot=table.plot(
+                    self.sequencing_inputs_data,
+                    table_headers(self.sequencing_inputs_data),
+                    {
+                        "id": "snakemake_sequencing_inputs_table",
+                        "title": "Snakemake Manifest Lineage: Sequencing Inputs",
+                        "no_violin": True,
+                    },
+                ),
+            )
+        if self.analysis_units_data:
+            self.add_section(
+                name="Analysis Units and Resolved Inputs",
+                anchor="snakemake-samples-analysis-units",
+                description=(
+                    "Rows from <code>analysis_units.tsv</code>, keyed by exact "
+                    "<code>ANALYSIS_UNIT_UID</code>. Selected library, sequencing-input, role, ordinal, "
+                    "modality, and layout arrays are resolved only from the required join."
+                ),
+                plot=table.plot(
+                    self.analysis_units_data,
+                    table_headers(self.analysis_units_data),
+                    {
+                        "id": "snakemake_analysis_units_table",
+                        "title": "Snakemake Manifest Lineage: Analysis Units",
+                        "no_violin": True,
+                    },
+                ),
+            )
+        if self.analysis_unit_inputs_data:
+            self.add_section(
+                name="Analysis Unit Input Topology",
+                anchor="snakemake-samples-analysis-unit-inputs",
+                description=("Source-faithful ordered many-to-many rows from <code>analysis_unit_inputs.tsv</code>."),
+                plot=table.plot(
+                    self.analysis_unit_inputs_data,
+                    table_headers(self.analysis_unit_inputs_data),
+                    {
+                        "id": "snakemake_analysis_unit_inputs_table",
+                        "title": "Snakemake Manifest Lineage: Analysis Unit Inputs",
                         "no_violin": True,
                     },
                 ),
@@ -395,7 +510,8 @@ class MultiqcModule(BaseMultiqcModule):
                 name="Hybrid Seq Batch QC",
                 anchor="snakemake-samples-hybrid-seq-batch-qc",
                 description=(
-                    "Per-library PASS/FAIL evaluation computed from <code>hybrid_seq_batch_qc.tsv</code>. "
+                    "Per-analysis-unit PASS/FAIL evaluation computed from "
+                    "<code>hybrid_seq_batch_qc.tsv</code>. "
                     "Overall PASS requires all nine checks to pass."
                 ),
                 plot=table.plot(
