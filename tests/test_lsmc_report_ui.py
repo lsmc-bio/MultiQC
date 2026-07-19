@@ -21,6 +21,8 @@ def selector_record(analysis_id: str, modality: str = "sr") -> dict:
         "SAMPLE_EUID": "test-sample-identity-1",
         "ANALYSIS_UNIT_UID": "LIBRARY-TEST-1",
         "LIBRARY_EUID": "test-library-identity-1",
+        "LIBRARY_IDS": ["LIBRARY-TEST-1"],
+        "LIBRARY_EUIDS": ["test-library-identity-1"],
         "section": "alignment",
         "grain": "library",
         "pair_endpoint_roles": [],
@@ -60,6 +62,7 @@ def test_selector_manifest_accepts_missing_optional_persisted_euids(tmp_path: Pa
     record["SPECIMEN_EUID"] = None
     record["SAMPLE_EUID"] = None
     record["LIBRARY_EUID"] = None
+    record["LIBRARY_EUIDS"] = []
     manifest = write_selector_manifest(tmp_path / "selectors.json", [record])
 
     assert load_dayoa_selector_manifest(str(manifest))["records"] == [record]
@@ -67,10 +70,40 @@ def test_selector_manifest_accepts_missing_optional_persisted_euids(tmp_path: Pa
 
 def test_selector_manifest_rejects_guessed_blank_euid_placeholders(tmp_path: Path) -> None:
     record = selector_record("record-1")
+    record["LIBRARY_EUIDS"] = [""]
+    manifest = write_selector_manifest(tmp_path / "selectors.json", [record])
+
+    with pytest.raises(ValueError, match="never a guessed placeholder"):
+        load_dayoa_selector_manifest(str(manifest))
+
+
+def test_selector_manifest_rejects_blank_singular_library_euid(tmp_path: Path) -> None:
+    record = selector_record("record-1")
     record["LIBRARY_EUID"] = ""
     manifest = write_selector_manifest(tmp_path / "selectors.json", [record])
 
     with pytest.raises(ValueError, match="never a guessed placeholder"):
+        load_dayoa_selector_manifest(str(manifest))
+
+
+def test_selector_manifest_allows_one_library_across_analysis_units(tmp_path: Path) -> None:
+    first = selector_record("record-1")
+    second = selector_record("record-2", "lr")
+    second["ANALYSIS_UNIT_UID"] = "ANALYSIS-ATTEMPT-2"
+    manifest = write_selector_manifest(tmp_path / "selectors.json", [first, second])
+
+    assert load_dayoa_selector_manifest(str(manifest))["records"] == [first, second]
+
+
+def test_selector_manifest_rejects_conflicting_physical_library_mapping(tmp_path: Path) -> None:
+    first = selector_record("record-1")
+    second = selector_record("record-2", "lr")
+    second["ANALYSIS_UNIT_UID"] = "ANALYSIS-ATTEMPT-2"
+    second["LIBRARY_EUID"] = "test-library-identity-2"
+    second["LIBRARY_EUIDS"] = ["test-library-identity-2"]
+    manifest = write_selector_manifest(tmp_path / "selectors.json", [first, second])
+
+    with pytest.raises(ValueError, match="conflicting library identity mapping"):
         load_dayoa_selector_manifest(str(manifest))
 
 
