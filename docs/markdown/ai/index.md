@@ -68,7 +68,7 @@ This is done by setting `ai_model` in the MultiQC config.
   - Default: `claude-sonnet-4-5`.
   - See the [Anthropic docs](https://docs.anthropic.com/en/docs/intro-to-claude#model-options).
 - OpenAI model names must begin with `gpt`
-  - Default: `gpt-5.5`.
+  - Default: `gpt-5.6`.
   - See the [OpenAI docs](https://platform.openai.com/docs/models).
 - Bedrock model names must be valid inputs to the `modelId` parameter of the `InvokeModel` API ([docs](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html#API_runtime_InvokeModel_RequestSyntax)).
 
@@ -80,7 +80,7 @@ MultiQC supports reasoning models from multiple providers which provide enhanced
 
 ### Supported Reasoning Models
 
-- OpenAI: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `o1`, `o3`, `o3-mini`, `o4-mini`
+- OpenAI: `gpt-5.6`, `gpt-5.5`, `gpt-5.4-mini`, `o1`, `o3`, `o3-mini`, `o4-mini`
 - Anthropic Claude 4 series: `claude-sonnet-4-5`
 
 ### Configuration
@@ -91,7 +91,7 @@ Simply set your AI model to a reasoning model:
 # multiqc_config.yaml
 ai_summary: true
 ai_provider: openai # or Anthropic for Claude 4
-ai_model: gpt-5.5 # or claude-sonnet-4-5, o4-mini, etc.
+ai_model: gpt-5.6 # or claude-sonnet-4-5, o4-mini, etc.
 ```
 
 Reasoning models support additional configuration parameters:
@@ -102,7 +102,7 @@ Reasoning models support additional configuration parameters:
 # multiqc_config.yaml
 ai_summary: true
 ai_provider: openai
-ai_model: gpt-5.5
+ai_model: gpt-5.6
 ai_reasoning_effort: high # low, medium, or high
 ai_max_completion_tokens: 8000 # adjust based on needs
 ```
@@ -173,7 +173,7 @@ ai_max_completion_tokens: 6000
 ```yaml
 ai_summary: true
 ai_provider: openai
-ai_model: gpt-5.5
+ai_model: gpt-5.6
 ai_reasoning_effort: medium
 ai_max_completion_tokens: 4000
 ```
@@ -190,7 +190,7 @@ ai_thinking_budget_tokens: 12000 # budget for thinking process
 
 ### Model Recommendations
 
-- **`gpt-5.5`**: Default OpenAI model for the most capable report summaries
+- **`gpt-5.6`**: Default OpenAI model for the most capable report summaries
 - **`o4-mini`**: Most cost-effective, good for routine analysis
 - **`o3-mini`**: Balanced performance and cost
 - **`o3`**: Best reasoning capabilities for complex reports
@@ -219,16 +219,16 @@ To generate them, you must enable them either on the command line or via a Multi
 - Command line flags:
   - `--ai` / `--ai-summary`: Generate a short report summary and put it on top of the report (fast)
   - `--ai-summary-full`: Generate a detailed version of the summary with analysis and recommendations (slower)
-  - `--ai-provider <provider>`: Choose AI provider. One of `seqera`, `openai`, `anthropic` or `aws_bedrock`. Default: auto-detect from environment variables
-  - `--ai-model <model>`: Choose provider-specific model. OpenAI default: `gpt-5.5`
+  - `--ai-provider <provider>`: Choose AI provider. One of `seqera`, `openai`, `anthropic` or `aws_bedrock`. Default: `openai`
+  - `--ai-model <model>`: Choose provider-specific model. OpenAI default: `gpt-5.6`
   - `--no-ai`: Disable AI toolbox and buttons in the report
 
 - Alternatively, MultiQC configuration file:
   ```yaml
   ai_summary: false # Set to true for short summaries
   ai_summary_full: false # Set to true for  long summaries
-  ai_provider: null # Auto-detect from environment variables. Or set 'seqera', 'openai', 'anthropic' or 'aws_bedrock'.
-  ai_model: null # Provider default. OpenAI default: 'gpt-5.5'
+  ai_provider: openai # Or set 'seqera', 'anthropic', 'aws_bedrock', or null to auto-detect from environment variables.
+  ai_model: null # Provider default. OpenAI default: 'gpt-5.6'
   no_ai: false # Set to true to disable AI toolbox and buttons in the report
   ```
 
@@ -244,14 +244,15 @@ export OPENAI_API_KEY="..."
 export ANTHROPIC_API_KEY="..."
 ```
 
-When `OPENAI_API_KEY` is the only provider credential and no provider is configured elsewhere, these are equivalent:
+With the default provider, these are equivalent:
 
 ```bash
-multiqc . --ai-summary --ai-provider openai --ai-model gpt-5.5
+multiqc . --ai-summary --ai-provider openai --ai-model gpt-5.6
 multiqc . --ai-summary
 ```
 
 MultiQC reads `OPENAI_API_KEY` from the report-generation process environment. Do not put API keys in config files, command history, committed files, or shared reports.
+Set `ai_provider: null` only if you want MultiQC to auto-detect from `SEQERA_ACCESS_TOKEN`, `TOWER_ACCESS_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or AWS credentials.
 
 It's possible to save these in an `.env` file instead of exporting to your shell's environment.
 This `.env` file can either be in the current working directory or the MultiQC source code directory.
@@ -277,6 +278,15 @@ export OPENAI_API_KEY="..."
 
 Environment variables will only be used for `--ai-summary`/`--ai-summary-full` generation.
 They are not saved by MultiQC and cannot be used for in-browser summary generation, within reports.
+
+For local development, `scripts/openai-env.sh` can populate `OPENAI_API_KEY` from
+`~/.config/openai/token.txt` before a long-running template development process starts:
+
+```bash
+source scripts/openai-env.sh
+```
+
+Set `OPENAI_TOKEN_FILE=/path/to/token` to use a different local token file.
 
 ## In-browser AI summaries
 

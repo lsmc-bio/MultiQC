@@ -1656,12 +1656,18 @@ snakemake_benchmarks/combined:
   - fn: benchmarks.tsv
   - fn: benchmarks_summary.tsv
   - fn: rules_benchmark_data_mqc.tsv
+snakemake_samples/specimens:
+  fn: specimens.tsv
 snakemake_samples/samples:
-  - fn: samples.tsv
-  - fn: input_samples_mqc.tsv
-snakemake_samples/units:
-  - fn: units.tsv
-  - fn: input_units_mqc.tsv
+  fn: samples.tsv
+snakemake_samples/libraries:
+  fn: libraries.tsv
+snakemake_samples/sequencing_inputs:
+  fn: sequencing_inputs.tsv
+snakemake_samples/analysis_units:
+  fn: analysis_units.tsv
+snakemake_samples/analysis_unit_inputs:
+  fn: analysis_unit_inputs.tsv
 snakemake_samples/gender_checks:
   fn: reported_vs_inferred_sex_check_mqc.tsv
 snakemake_samples/hybrid_qc:
@@ -3345,9 +3351,9 @@ Replace sample names with placeholders before sending data to the AI provider.
 
 #### `ai_provider`
 
-**Type**: <code>Literal["seqera", "openai", "anthropic", "aws_bedrock", "custom"]</code>
+**Type**: <code>Literal["seqera", "openai", "anthropic", "aws_bedrock", "custom"]</code> (default: `"openai"`)
 
-AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Leave unset to auto-detect from environment variables.
+AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Set to null to auto-detect from environment variables.
 
 #### `ai_model`
 
@@ -3358,7 +3364,7 @@ Model name. Provider-specific.
 **Examples**:
 
 ```yaml
-ai_model: gpt-5.5
+ai_model: gpt-5.6
 ```
 
 ```yaml

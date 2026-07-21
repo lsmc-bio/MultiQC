@@ -971,11 +971,11 @@ class MultiQCConfig(BaseModel):
             )
         with group("Provider"):
             ai_provider: Optional[AiProviderLiteral] = cfg(
-                "AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Leave unset to auto-detect from environment variables.",
+                "AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Set to null to auto-detect from environment variables.",
             )
             ai_model: Optional[str] = cfg(
                 "Model name. Provider-specific.",
-                examples=["gpt-5.5", "claude-sonnet-4-5."],
+                examples=["gpt-5.6", "claude-sonnet-4-5."],
             )
             ai_custom_endpoint: Optional[str] = cfg(
                 "Base URL for the 'custom' provider, eg. a self-hosted OpenAI-compatible API.",

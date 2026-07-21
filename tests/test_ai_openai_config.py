@@ -21,7 +21,7 @@ def test_openai_default_provider_auto_detects_from_env(monkeypatch):
     assert client.model == ai.DEFAULT_OPENAI_MODEL
 
 
-def test_openai_explicit_provider_uses_default_gpt55_model(monkeypatch):
+def test_openai_explicit_provider_uses_default_gpt56_model(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-key")
 
     config.ai_summary = True
@@ -31,8 +31,8 @@ def test_openai_explicit_provider_uses_default_gpt55_model(monkeypatch):
     client = ai.get_llm_client()
 
     assert isinstance(client, ai.OpenAiClient)
-    assert client.model == "gpt-5.5"
-    assert client.max_tokens() == ai.GPT55_CONTEXT_WINDOW
+    assert client.model == "gpt-5.6"
+    assert client.max_tokens() == ai.GPT56_CONTEXT_WINDOW
 
 
 def test_gpt5_family_uses_reasoning_parameters(monkeypatch):
@@ -45,7 +45,7 @@ def test_gpt5_family_uses_reasoning_parameters(monkeypatch):
 
     monkeypatch.setattr(ai.OpenAiClient, "_request_with_error_handling_and_retries", fake_request)
 
-    config.ai_model = "gpt-5.5"
+    config.ai_model = "gpt-5.6"
     config.ai_reasoning_effort = None
     config.ai_max_completion_tokens = None
     config.ai_extra_query_options = None
@@ -53,9 +53,9 @@ def test_gpt5_family_uses_reasoning_parameters(monkeypatch):
     client = ai.OpenAiClient("dummy-openai-key")
     response = client._query("Summarize this report")
 
-    assert response.model == "gpt-5.5"
+    assert response.model == "gpt-5.6"
     assert captured_body is not None
-    assert captured_body["model"] == "gpt-5.5"
+    assert captured_body["model"] == "gpt-5.6"
     assert captured_body["max_completion_tokens"] == 4000
     assert captured_body["reasoning_effort"] == "medium"
     assert "temperature" not in captured_body

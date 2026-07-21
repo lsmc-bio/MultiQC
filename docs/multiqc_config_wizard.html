@@ -2146,7 +2146,7 @@
       </div>
 
       <footer class="page-footer">
-        Generated on <time datetime="2026-07-17">2026-07-17</time> for MultiQC
+        Generated on <time datetime="2026-07-21">2026-07-21</time> for MultiQC
         <code>1.36.dev0</code>.
       </footer>
     </main>
@@ -4191,22 +4191,24 @@
                                                         "fn": "rules_benchmark_data_mqc.tsv"
                                                 }
                                         ],
-                                        "snakemake_samples/samples": [
-                                                {
-                                                        "fn": "samples.tsv"
-                                                },
-                                                {
-                                                        "fn": "input_samples_mqc.tsv"
-                                                }
-                                        ],
-                                        "snakemake_samples/units": [
-                                                {
-                                                        "fn": "units.tsv"
-                                                },
-                                                {
-                                                        "fn": "input_units_mqc.tsv"
-                                                }
-                                        ],
+                                        "snakemake_samples/specimens": {
+                                                "fn": "specimens.tsv"
+                                        },
+                                        "snakemake_samples/samples": {
+                                                "fn": "samples.tsv"
+                                        },
+                                        "snakemake_samples/libraries": {
+                                                "fn": "libraries.tsv"
+                                        },
+                                        "snakemake_samples/sequencing_inputs": {
+                                                "fn": "sequencing_inputs.tsv"
+                                        },
+                                        "snakemake_samples/analysis_units": {
+                                                "fn": "analysis_units.tsv"
+                                        },
+                                        "snakemake_samples/analysis_unit_inputs": {
+                                                "fn": "analysis_unit_inputs.tsv"
+                                        },
                                         "snakemake_samples/gender_checks": {
                                                 "fn": "reported_vs_inferred_sex_check_mqc.tsv"
                                         },
@@ -6551,8 +6553,8 @@
                                 "deprecated": false,
                                 "multiline": false,
                                 "type": "string",
-                                "description": "AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Leave unset to auto-detect from environment variables.",
-                                "default": null,
+                                "description": "AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Set to null to auto-detect from environment variables.",
+                                "default": "openai",
                                 "enum": [
                                         "seqera",
                                         "openai",
@@ -6572,7 +6574,7 @@
                                 "enum": null,
                                 "items_enum": null,
                                 "examples": [
-                                        "gpt-5.5",
+                                        "gpt-5.6",
                                         "claude-sonnet-4-5."
                                 ]
                         },
@@ -10589,7 +10591,7 @@
         }
       ],
       "default": null,
-      "description": "AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Leave unset to auto-detect from environment variables.",
+      "description": "AI provider used for summaries. One of seqera, openai, anthropic, aws_bedrock, custom. Set to null to auto-detect from environment variables.",
       "group": "Provider",
       "section": "AI Summary",
       "title": "Ai Provider"
@@ -10606,7 +10608,7 @@
       "default": null,
       "description": "Model name. Provider-specific.",
       "examples": [
-        "gpt-5.5",
+        "gpt-5.6",
         "claude-sonnet-4-5."
       ],
       "group": "Provider",

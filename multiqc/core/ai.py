@@ -20,8 +20,8 @@ from multiqc.utils import config_schema
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPENAI_MODEL = "gpt-5.5"
-GPT55_CONTEXT_WINDOW = 1_050_000
+DEFAULT_OPENAI_MODEL = "gpt-5.6"
+GPT56_CONTEXT_WINDOW = 1_050_000
 
 # List of known reasoning models
 REASONING_MODELS = {
@@ -330,8 +330,8 @@ class OpenAiClient(Client):
         if config.ai_custom_context_window:
             return config.ai_custom_context_window
 
-        if self.model.startswith("gpt-5.5"):
-            return GPT55_CONTEXT_WINDOW
+        if self.model.startswith("gpt-5.6"):
+            return GPT56_CONTEXT_WINDOW
 
         # Reasoning models have different context windows
         if is_reasoning_model(self.model):
