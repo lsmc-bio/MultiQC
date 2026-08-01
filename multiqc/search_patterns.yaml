@@ -516,6 +516,10 @@ gffcompare:
   fn: "*.stats"
   contents: "# gffcompare"
   num_lines: 2
+giabconcordance/rtg:
+  fn: "giab_concordance_mqc.tsv"
+giabconcordance/jasmine_le50:
+  fn: "sentdhiomr2_jasmine_le50_rtg_mqc.tsv"
 glimpse/err_spl:
   fn: "*.error.spl.txt.gz"
   num_lines: 1
@@ -1239,6 +1243,9 @@ truvari/bench:
   contents_re: ".*truvari.* bench.*"
   fn: "log.txt"
   num_lines: 10
+truvari/dayoa_aggregate:
+  fn: "sentdhiomr2_truvari_mqc.tsv"
+  contents: "Sample\tSampleID\tAnalysisUnitUID\tentity_scope\tdeclared_grain\ttool\ttool_code\tquery\tstatus\tTP-base\tTP-comp\tFP\tFN\tprecision\trecall\tf1\tprojected_records\texcluded_records"
 umicollapse:
   num_lines: 100
   contents: "UMI collapsing finished in "

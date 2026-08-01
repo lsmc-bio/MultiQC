@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import logging
 import os
@@ -5,7 +7,8 @@ import re
 from typing import List
 
 from multiqc.base_module import BaseMultiqcModule, ModuleNoSamplesFound
-from multiqc.plots import bargraph, scatter
+from multiqc.plots import bargraph, scatter, table
+from multiqc.types import SectionAlert
 
 log = logging.getLogger(__name__)
 
@@ -29,14 +32,27 @@ class MultiqcModule(BaseMultiqcModule):
             doi="https://doi.org/10.1101/2022.02.21.481353",
         )
 
+        self._bench_data = {}
+        self._dayoa_data = {}
         n = dict()
         n["bench"] = self.parse_bench_stats()
+        n["dayoa_aggregate"] = self.parse_dayoa_aggregate()
         if n["bench"] > 0:
             log.info(f"Found {n['bench']} truvari bench reports")
+        if n["dayoa_aggregate"] > 0:
+            log.info(f"Found {n['dayoa_aggregate']} DayOA Truvari aggregate rows")
 
         # Exit if we didn't find anything
         if sum(n.values()) == 0:
             raise ModuleNoSamplesFound
+
+        if self._bench_data:
+            self.write_data_file(self._bench_data, "multiqc_truvari_bench")
+        if self._dayoa_data:
+            self.write_data_file(
+                self._dayoa_data,
+                "multiqc_truvari_dayoa_aggregate",
+            )
 
     def parse_bench_stats(self):
         """Find truvari bench logs and parse their data"""
@@ -95,8 +111,7 @@ class MultiqcModule(BaseMultiqcModule):
             self.add_data_source(f, section="bench")
             data[f["s_name"]] = stats
 
-            if version is not None:
-                self.add_software_version(version, f["s_name"])
+            self.add_software_version(version, f["s_name"])
 
         # Filter to strip out ignored sample names
         data = self.ignore_samples(data)
@@ -105,8 +120,7 @@ class MultiqcModule(BaseMultiqcModule):
         if len(data) == 0:
             return len(data)
 
-        # Write parsed report data to a file (restructure first)
-        self.write_data_file(data, "multiqc_truvari_bench")
+        self._bench_data = data
 
         # General Stats Table
         bench_headers = dict()
@@ -302,4 +316,215 @@ class MultiqcModule(BaseMultiqcModule):
         )
 
         # Return the number of logs that were found
+        return len(data)
+
+    def parse_dayoa_aggregate(self):
+        """Parse DayOA terminal-receipt aggregates for named HG002 queries."""
+        required_fields = {
+            "Sample",
+            "SampleID",
+            "AnalysisUnitUID",
+            "query",
+            "status",
+            "TP-base",
+            "TP-comp",
+            "FP",
+            "FN",
+            "precision",
+            "recall",
+            "f1",
+            "projected_records",
+            "excluded_records",
+        }
+        integer_fields = {
+            "TP-base",
+            "TP-comp",
+            "FP",
+            "FN",
+            "projected_records",
+            "excluded_records",
+        }
+        float_fields = {"precision", "recall", "f1"}
+        data = {}
+        for f in self.find_log_files("truvari/dayoa_aggregate"):
+            reader = csv.DictReader(io.StringIO(f["f"]), delimiter="\t")
+            if reader.fieldnames is None or not required_fields.issubset(reader.fieldnames):
+                raise ValueError(
+                    f"Malformed DayOA Truvari aggregate {f['fn']}: expected fields {sorted(required_fields)}"
+                )
+            for raw_row in reader:
+                sample = self.clean_s_name(str(raw_row["Sample"]), f)
+                if sample in data:
+                    raise ValueError(f"Duplicate DayOA Truvari sample/query row: {sample}")
+                row = dict(raw_row)
+                for key in integer_fields:
+                    if raw_row[key] in {"", "."}:
+                        row[key] = None
+                    else:
+                        parsed = float(raw_row[key])
+                        if not parsed.is_integer():
+                            raise ValueError(f"Expected integer-valued {key}, found {raw_row[key]!r}")
+                        row[key] = int(parsed)
+                for key in float_fields:
+                    row[key] = None if raw_row[key] in {"", "."} else float(raw_row[key])
+                data[sample] = row
+                self.add_data_source(f, section="dayoa_aggregate", s_name=sample)
+                self.add_software_version(None, sample)
+
+        data = self.ignore_samples(data)
+        if not data:
+            return 0
+
+        successful = {sample: row for sample, row in data.items() if row["status"] == "SUCCESS"}
+        failed = {sample: row for sample, row in data.items() if row["status"] == "DIAGNOSTIC_FAILED"}
+        invalid_status = sorted(
+            {str(row["status"]) for row in data.values() if row["status"] not in {"SUCCESS", "DIAGNOSTIC_FAILED"}}
+        )
+        if invalid_status:
+            raise ValueError("Unexpected DayOA Truvari terminal status values: " + ", ".join(invalid_status))
+
+        metric_headers = {
+            "precision": {
+                "title": "Precision",
+                "description": "Query-call precision against the GIAB SV truth set",
+                "suffix": "%",
+                "modify": lambda x: x * 100,
+                "min": 0,
+                "max": 100,
+                "scale": "RdYlGn",
+            },
+            "recall": {
+                "title": "Recall",
+                "description": "GIAB SV truth recall for the query callset",
+                "suffix": "%",
+                "modify": lambda x: x * 100,
+                "min": 0,
+                "max": 100,
+                "scale": "RdYlGn",
+            },
+            "f1": {
+                "title": "F1",
+                "description": "Harmonic mean of precision and recall",
+                "suffix": "%",
+                "modify": lambda x: x * 100,
+                "min": 0,
+                "max": 100,
+                "scale": "RdYlGn",
+            },
+        }
+        if successful:
+            self.general_stats_addcols(successful, metric_headers)
+
+        table_headers = {
+            "query": {
+                "title": "Query",
+                "description": "Named DayOA callset benchmarked by Truvari",
+            },
+            "status": {
+                "title": "Status",
+                "description": "Terminal diagnostic status",
+            },
+            "TP-base": {
+                "title": "TP truth",
+                "description": "Truth records matched by the query",
+                "format": "{:,.0f}",
+                "scale": "Greens",
+            },
+            "TP-comp": {
+                "title": "TP query",
+                "description": "Query records matched to truth",
+                "format": "{:,.0f}",
+                "scale": "Greens",
+            },
+            "FP": {
+                "title": "FP",
+                "description": "Query records not matched to truth",
+                "format": "{:,.0f}",
+                "scale": "Reds",
+            },
+            "FN": {
+                "title": "FN",
+                "description": "Truth records not matched by the query",
+                "format": "{:,.0f}",
+                "scale": "Reds",
+            },
+            **metric_headers,
+            "projected_records": {
+                "title": "Benchmarked",
+                "description": "DEL/INS records at least 50 bp within the truth BED",
+                "format": "{:,.0f}",
+                "scale": "Blues",
+            },
+            "excluded_records": {
+                "title": "Excluded",
+                "description": "Records retained in source data but excluded from this projection",
+                "format": "{:,.0f}",
+                "scale": "Oranges",
+            },
+        }
+        alerts = []
+        if failed:
+            failed_queries = ", ".join(sorted(str(row["query"]) for row in failed.values()))
+            alerts.append(
+                SectionAlert(
+                    message=(
+                        "Diagnostic failures were retained for: "
+                        f"{failed_queries}. See terminal receipts and logs for evidence."
+                    ),
+                    level="warning",
+                )
+            )
+        self.add_section(
+            name="DayOA named-query concordance",
+            anchor="truvari-dayoa-named-query-concordance",
+            description=(
+                "Terminal Truvari results for the complete DayOA HG002 query matrix. "
+                "Diagnostic failures do not imply a release failure."
+            ),
+            alerts=alerts,
+            plot=table.plot(
+                data=data,
+                headers=table_headers,
+                pconfig={
+                    "id": "truvari-dayoa-named-query-table",
+                    "title": "Truvari: DayOA named-query concordance",
+                },
+            ),
+        )
+
+        if successful:
+            scatter_data = {
+                sample: {
+                    "x": row["precision"] * 100,
+                    "y": row["recall"] * 100,
+                }
+                for sample, row in successful.items()
+                if row["precision"] is not None and row["recall"] is not None
+            }
+            if scatter_data:
+                self.add_section(
+                    name="DayOA precision vs. recall",
+                    anchor="truvari-dayoa-precision-recall",
+                    description=(
+                        "Precision and recall for successful named-query diagnostics against GIAB GRCh38 SV truth."
+                    ),
+                    plot=scatter.plot(
+                        scatter_data,
+                        {
+                            "id": "truvari-dayoa-precision-recall-plot",
+                            "title": "Truvari: DayOA precision vs. recall",
+                            "xlab": "Precision (%)",
+                            "ylab": "Recall (%)",
+                            "xmin": 0,
+                            "xmax": 100,
+                            "ymin": 0,
+                            "ymax": 100,
+                            "square": True,
+                            "marker_size": 7,
+                            "tt_label": ("{point.x:.2f}% precision<br/>{point.y:.2f}% recall"),
+                        },
+                    ),
+                )
+
+        self._dayoa_data = data
         return len(data)
