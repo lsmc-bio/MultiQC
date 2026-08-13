@@ -54,6 +54,7 @@ class SummaryValidationError(ValueError):
 @dataclass(frozen=True)
 class ParsedReport:
     report_id: str
+    summary_payload_sha256: str
     payload_sha256: str
     producer_version: str
     callset: dict[str, Any]
@@ -233,6 +234,7 @@ def _parse_summary(content: str, source_name: str) -> tuple[ParsedReport, ...]:
         parsed.append(
             ParsedReport(
                 report_id=report_id,
+                summary_payload_sha256=expected_digest,
                 payload_sha256=report_digest,
                 producer_version=producer_version,
                 callset=callset,

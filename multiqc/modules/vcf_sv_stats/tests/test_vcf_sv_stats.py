@@ -311,6 +311,7 @@ def test_module_keeps_zero_count_sections_visible(tmp_path: Path) -> None:
 
     for section_id in (
         "vcf-sv-stats-types",
+        "vcf-sv-stats-length",
         "vcf-sv-stats-filters",
         "vcf-sv-stats-genotypes",
         "vcf-sv-stats-copy-number",
@@ -336,6 +337,16 @@ def test_module_deduplicates_identical_and_rejects_conflicting_reports(
     conflict["reports"][0]["statistics"]["events"]["resolved"] = 12
     resign(conflict)
     _write_summary(tmp_path / "third.vcf-sv-stats.json", conflict)
+    report.reset()
+    report.analysis_files = [str(tmp_path)]
+    report.search_files(["vcf_sv_stats"])
+    with pytest.raises(SummaryValidationError, match="Conflicting"):
+        MultiqcModule()
+
+    outer_conflict = copy.deepcopy(first)
+    outer_conflict["validation"]["states"]["statistics_state"] = "incomplete"
+    resign(outer_conflict)
+    _write_summary(tmp_path / "third.vcf-sv-stats.json", outer_conflict)
     report.reset()
     report.analysis_files = [str(tmp_path)]
     report.search_files(["vcf_sv_stats"])

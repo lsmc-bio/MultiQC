@@ -50,7 +50,7 @@ class MultiqcModule(BaseMultiqcModule):
             for parsed in parse_summary(f["f"], f["fn"]):
                 previous = records.get(parsed.report_id)
                 if previous is not None:
-                    if previous.payload_sha256 != parsed.payload_sha256:
+                    if previous.summary_payload_sha256 != parsed.summary_payload_sha256:
                         raise SummaryValidationError(f"Conflicting vcf-sv-stats report identifier: {parsed.report_id}")
                     self.duplicate_sources.append(f["fn"])
                     continue
@@ -293,12 +293,21 @@ class MultiqcModule(BaseMultiqcModule):
             expected_labels = labels
             data[report_id] = dict(zip(labels, length["counts"]))
         categories = {label: {"name": label} for label in expected_labels or ()}
+        all_zero = not any(count > 0 for counts in data.values() for count in counts.values())
         self.add_section(
             name="Structural-variant length",
             anchor="vcf-sv-stats-length",
             description=(
                 "Alleles with an applicable length, grouped using the producer's fixed "
                 "histogram policy. Missing, invalid, and not-applicable values are not zero."
+            ),
+            alerts=(
+                SectionAlert(
+                    message="All reports contain zero counts for this metric.",
+                    affected_samples=sorted(data),
+                )
+                if all_zero
+                else None
             ),
             plot=bargraph.plot(
                 data,
@@ -308,6 +317,7 @@ class MultiqcModule(BaseMultiqcModule):
                     "title": "vcf-sv-stats: structural-variant length",
                     "ylab": "Alleles",
                     "cpswitch": False,
+                    "hide_zero_cats": False,
                 },
             ),
         )
