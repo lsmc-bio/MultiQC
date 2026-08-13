@@ -170,6 +170,44 @@ def test_parser_validates_digest_schema_and_nested_contract() -> None:
     with pytest.raises(SummaryValidationError, match="boundaries are not unique"):
         parse_summary(render(repeated_boundary), "repeated-boundary.vcf-sv-stats.json")
 
+    reversed_boundary = copy.deepcopy(value)
+    reversed_boundary["reports"][0]["statistics"]["length_bp"]["boundaries"][1] = [100, 50]
+    resign(reversed_boundary)
+    with pytest.raises(SummaryValidationError, match="upper value must exceed lower"):
+        parse_summary(render(reversed_boundary), "reversed-boundary.vcf-sv-stats.json")
+
+    boolean_boundary = copy.deepcopy(value)
+    boolean_boundary["reports"][0]["statistics"]["length_bp"]["boundaries"][1] = [False, 50]
+    resign(boolean_boundary)
+    with pytest.raises(SummaryValidationError, match="values must be integers"):
+        parse_summary(render(boolean_boundary), "boolean-boundary.vcf-sv-stats.json")
+
+    inconsistent_breakends = copy.deepcopy(value)
+    inconsistent_breakends["reports"][0]["statistics"]["breakends"]["total"] = 1
+    inconsistent_breakends["reports"][0]["statistics"]["breakends"]["without_declared_mate"] = 2
+    resign(inconsistent_breakends)
+    with pytest.raises(SummaryValidationError, match="categories exceed total"):
+        parse_summary(render(inconsistent_breakends), "inconsistent-breakends.vcf-sv-stats.json")
+
+    inconsistent_pairs = copy.deepcopy(value)
+    inconsistent_pairs["reports"][0]["statistics"]["breakends"]["reciprocal_pairs"] = 2
+    resign(inconsistent_pairs)
+    with pytest.raises(SummaryValidationError, match="categories exceed total"):
+        parse_summary(render(inconsistent_pairs), "inconsistent-pairs.vcf-sv-stats.json")
+
+    inconsistent_aggregate = copy.deepcopy(value)
+    inconsistent_aggregate["statistics"]["breakends"]["total"] = 1
+    inconsistent_aggregate["statistics"]["breakends"]["unresolved_mate_references"] = 2
+    resign(inconsistent_aggregate)
+    with pytest.raises(SummaryValidationError, match="categories exceed total"):
+        parse_summary(render(inconsistent_aggregate), "inconsistent-aggregate.vcf-sv-stats.json")
+
+    invalid_aggregate_boundary = copy.deepcopy(value)
+    invalid_aggregate_boundary["statistics"]["length_bp"]["boundaries"][0] = [50, 50]
+    resign(invalid_aggregate_boundary)
+    with pytest.raises(SummaryValidationError, match="upper value must exceed lower"):
+        parse_summary(render(invalid_aggregate_boundary), "invalid-aggregate-boundary.json")
+
     missing = copy.deepcopy(value)
     del missing["reports"][0]["statistics"]["events"]
     resign(missing)
