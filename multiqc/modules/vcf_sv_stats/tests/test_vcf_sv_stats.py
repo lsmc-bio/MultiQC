@@ -11,6 +11,8 @@ from multiqc import config, report, validation
 from multiqc.modules.vcf_sv_stats import MultiqcModule
 from multiqc.modules.vcf_sv_stats.parser import SummaryValidationError, parse_summary
 
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "neutral.hg002.vcf-sv-stats.json"
+
 
 @pytest.fixture(autouse=True)
 def reset_multiqc_state():
@@ -259,6 +261,20 @@ def test_module_renders_all_sections_and_preserves_report_identity(tmp_path: Pat
         "vcf-sv-stats-provenance",
     }
     assert module.vcf_sv_stats_data["vss1-test-0000"]["report"]["mapped_vcf_sample_ids"] == ["HG002"]
+
+
+def test_module_parses_and_renders_merged_hg002_fixture() -> None:
+    parsed = parse_summary(FIXTURE_PATH.read_text(encoding="utf-8"), FIXTURE_PATH.name)
+    assert len(parsed) == 1
+    assert parsed[0].report_id == "vss1-67d5a6c517544715ffd0"
+    assert parsed[0].callset["vcf_sample_ids"] == ["HG002"]
+
+    report.analysis_files = [str(FIXTURE_PATH)]
+    report.search_files(["vcf_sv_stats"])
+    module = MultiqcModule()
+
+    assert list(module.vcf_sv_stats_data) == ["vss1-67d5a6c517544715ffd0"]
+    assert len(module.sections) == 11
 
 
 def test_module_deduplicates_identical_and_rejects_conflicting_reports(
