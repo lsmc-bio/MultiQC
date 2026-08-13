@@ -217,6 +217,9 @@ def _parse_summary(content: str, source_name: str) -> tuple[ParsedReport, ...]:
     ):
         non_empty_string(states[field], f"validation.states.{field}")
 
+    aggregate_statistics = mapping(payload["statistics"], "statistics")
+    _validate_statistics(aggregate_statistics, "statistics")
+
     reports = payload["reports"]
     if not reports:
         raise SummaryValidationError(f"Summary contains no reports in {source_name}")

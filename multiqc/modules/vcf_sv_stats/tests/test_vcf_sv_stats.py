@@ -189,6 +189,19 @@ def test_parser_validates_digest_schema_and_nested_contract() -> None:
     with pytest.raises(SummaryValidationError, match="unresolved counts exceed total"):
         parse_summary(render(inconsistent_breakends), "inconsistent-breakends.vcf-sv-stats.json")
 
+    inconsistent_aggregate = copy.deepcopy(value)
+    inconsistent_aggregate["statistics"]["breakends"]["total"] = 1
+    inconsistent_aggregate["statistics"]["breakends"]["unresolved_mate_references"] = 2
+    resign(inconsistent_aggregate)
+    with pytest.raises(SummaryValidationError, match="unresolved counts exceed total"):
+        parse_summary(render(inconsistent_aggregate), "inconsistent-aggregate.vcf-sv-stats.json")
+
+    invalid_aggregate_boundary = copy.deepcopy(value)
+    invalid_aggregate_boundary["statistics"]["length_bp"]["boundaries"][0] = [50, 50]
+    resign(invalid_aggregate_boundary)
+    with pytest.raises(SummaryValidationError, match="upper value must exceed lower"):
+        parse_summary(render(invalid_aggregate_boundary), "invalid-aggregate-boundary.json")
+
     missing = copy.deepcopy(value)
     del missing["reports"][0]["statistics"]["events"]
     resign(missing)
