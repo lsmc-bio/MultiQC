@@ -10,8 +10,8 @@ def test_higher_section_order_weight_renders_first():
     report.modules = [delivery, read_qc]
     config.skip_versions_section = True
     config.report_section_order = {
-        "dayoa_sequencer_reads_qc": {"order": 7000},
-        "dayoa_pipeline_delivery": {"order": 2000},
+        Anchor("dayoa_sequencer_reads_qc"): {"order": 7000},
+        Anchor("dayoa_pipeline_delivery"): {"order": 2000},
     }
 
     order_modules_and_sections()
@@ -50,6 +50,7 @@ def test_table_id_config_hides_and_moves_provenance_columns():
         },
         pconfig=table.TableConfig(id="dayoa_delivery", title="DayOA delivery"),
     )
+    assert plot is not None and not isinstance(plot, str)
 
     columns = {
         str(column.clean_rid): column
