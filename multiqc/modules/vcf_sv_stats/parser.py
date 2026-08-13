@@ -94,13 +94,20 @@ def _validate_statistics(statistics: dict[str, Any], prefix: str) -> None:
     events = mapping(statistics["events"], f"{prefix}.events")
     non_negative_integer(events["resolved"], f"{prefix}.events.resolved")
     breakends = mapping(statistics["breakends"], f"{prefix}.breakends")
-    for key in (
-        "total",
-        "reciprocal_pairs",
-        "without_declared_mate",
-        "unresolved_mate_references",
-    ):
-        non_negative_integer(breakends[key], f"{prefix}.breakends.{key}")
+    breakend_total = non_negative_integer(breakends["total"], f"{prefix}.breakends.total")
+    non_negative_integer(
+        breakends["reciprocal_pairs"],
+        f"{prefix}.breakends.reciprocal_pairs",
+    )
+    unresolved_breakends = non_negative_integer(
+        breakends["without_declared_mate"],
+        f"{prefix}.breakends.without_declared_mate",
+    ) + non_negative_integer(
+        breakends["unresolved_mate_references"],
+        f"{prefix}.breakends.unresolved_mate_references",
+    )
+    if unresolved_breakends > breakend_total:
+        raise SummaryValidationError(f"{prefix}.breakends unresolved counts exceed total")
     count_mapping(statistics["filters"], f"{prefix}.filters")
     count_mapping(statistics["genotypes"], f"{prefix}.genotypes")
     count_mapping(statistics["copy_number"], f"{prefix}.copy_number")
@@ -258,6 +265,10 @@ def length_label(boundary: Any) -> str:
     if not isinstance(boundary, list) or len(boundary) != 2:
         raise SummaryValidationError("Length boundary must contain lower and upper values")
     lower, upper = boundary
-    if not isinstance(lower, int) or (upper is not None and not isinstance(upper, int)):
+    if isinstance(lower, bool) or not isinstance(lower, int):
         raise SummaryValidationError("Length boundary values must be integers or null")
+    if upper is not None and (isinstance(upper, bool) or not isinstance(upper, int)):
+        raise SummaryValidationError("Length boundary values must be integers or null")
+    if upper is not None and upper <= lower:
+        raise SummaryValidationError("Length boundary upper value must exceed lower value")
     return f"{lower:,}+ bp" if upper is None else f"{lower:,}-{upper - 1:,} bp"
