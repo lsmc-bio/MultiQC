@@ -186,14 +186,20 @@ def test_parser_validates_digest_schema_and_nested_contract() -> None:
     inconsistent_breakends["reports"][0]["statistics"]["breakends"]["total"] = 1
     inconsistent_breakends["reports"][0]["statistics"]["breakends"]["without_declared_mate"] = 2
     resign(inconsistent_breakends)
-    with pytest.raises(SummaryValidationError, match="unresolved counts exceed total"):
+    with pytest.raises(SummaryValidationError, match="categories exceed total"):
         parse_summary(render(inconsistent_breakends), "inconsistent-breakends.vcf-sv-stats.json")
+
+    inconsistent_pairs = copy.deepcopy(value)
+    inconsistent_pairs["reports"][0]["statistics"]["breakends"]["reciprocal_pairs"] = 2
+    resign(inconsistent_pairs)
+    with pytest.raises(SummaryValidationError, match="categories exceed total"):
+        parse_summary(render(inconsistent_pairs), "inconsistent-pairs.vcf-sv-stats.json")
 
     inconsistent_aggregate = copy.deepcopy(value)
     inconsistent_aggregate["statistics"]["breakends"]["total"] = 1
     inconsistent_aggregate["statistics"]["breakends"]["unresolved_mate_references"] = 2
     resign(inconsistent_aggregate)
-    with pytest.raises(SummaryValidationError, match="unresolved counts exceed total"):
+    with pytest.raises(SummaryValidationError, match="categories exceed total"):
         parse_summary(render(inconsistent_aggregate), "inconsistent-aggregate.vcf-sv-stats.json")
 
     invalid_aggregate_boundary = copy.deepcopy(value)

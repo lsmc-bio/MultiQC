@@ -95,7 +95,7 @@ def _validate_statistics(statistics: dict[str, Any], prefix: str) -> None:
     non_negative_integer(events["resolved"], f"{prefix}.events.resolved")
     breakends = mapping(statistics["breakends"], f"{prefix}.breakends")
     breakend_total = non_negative_integer(breakends["total"], f"{prefix}.breakends.total")
-    non_negative_integer(
+    reciprocal_pairs = non_negative_integer(
         breakends["reciprocal_pairs"],
         f"{prefix}.breakends.reciprocal_pairs",
     )
@@ -106,8 +106,8 @@ def _validate_statistics(statistics: dict[str, Any], prefix: str) -> None:
         breakends["unresolved_mate_references"],
         f"{prefix}.breakends.unresolved_mate_references",
     )
-    if unresolved_breakends > breakend_total:
-        raise SummaryValidationError(f"{prefix}.breakends unresolved counts exceed total")
+    if 2 * reciprocal_pairs + unresolved_breakends > breakend_total:
+        raise SummaryValidationError(f"{prefix}.breakends categories exceed total")
     count_mapping(statistics["filters"], f"{prefix}.filters")
     count_mapping(statistics["genotypes"], f"{prefix}.genotypes")
     count_mapping(statistics["copy_number"], f"{prefix}.copy_number")
