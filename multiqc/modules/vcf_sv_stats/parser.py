@@ -133,6 +133,9 @@ def _validate_statistics(statistics: dict[str, Any], prefix: str) -> None:
         raise SummaryValidationError(f"{prefix}.length_bp histogram must use arrays")
     if len(boundaries) != len(counts):
         raise SummaryValidationError(f"{prefix}.length_bp histogram cardinality differs")
+    labels = [length_label(boundary) for boundary in boundaries]
+    if len(set(labels)) != len(labels):
+        raise SummaryValidationError(f"{prefix}.length_bp histogram boundaries are not unique")
     total = sum(non_negative_integer(count, f"{prefix}.length_bp.counts") for count in counts)
     if total != non_negative_integer(length["n"], f"{prefix}.length_bp.n"):
         raise SummaryValidationError(f"{prefix}.length_bp counts do not reconcile")

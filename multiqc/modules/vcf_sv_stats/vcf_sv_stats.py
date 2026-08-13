@@ -5,6 +5,7 @@ from typing import Any
 from multiqc.base_module import BaseMultiqcModule, ModuleNoSamplesFound
 from multiqc.plots import bargraph, table
 from multiqc.plots.table_object import ColumnDict
+from multiqc.types import SectionAlert
 
 from .parser import (
     ParsedReport,
@@ -252,12 +253,21 @@ class MultiqcModule(BaseMultiqcModule):
         ylab: str,
     ) -> None:
         categories = {key: {"name": str(key).replace("_", " ")} for key in sorted(keys)}
+        all_zero = not any(count > 0 for counts in data.values() for count in counts.values())
         self.add_section(
             name=title,
             anchor=anchor,
             description=(
                 "Counts retain the metric scope and denominator declared in the producer "
                 "summary. They are descriptive statistics, not truth-set accuracy measures."
+            ),
+            alerts=(
+                SectionAlert(
+                    message="All reports contain zero counts for this metric.",
+                    affected_samples=sorted(data),
+                )
+                if all_zero
+                else None
             ),
             plot=bargraph.plot(
                 data,
@@ -267,6 +277,7 @@ class MultiqcModule(BaseMultiqcModule):
                     "title": f"vcf-sv-stats: {title}",
                     "ylab": ylab,
                     "cpswitch": False,
+                    "hide_zero_cats": False,
                 },
             ),
         )

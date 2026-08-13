@@ -164,6 +164,12 @@ def test_parser_validates_digest_schema_and_nested_contract() -> None:
     with pytest.raises(SummaryValidationError, match="counts do not reconcile"):
         parse_summary(render(malformed), "malformed.vcf-sv-stats.json")
 
+    repeated_boundary = copy.deepcopy(value)
+    repeated_boundary["reports"][0]["statistics"]["length_bp"]["boundaries"][1] = [0, 50]
+    resign(repeated_boundary)
+    with pytest.raises(SummaryValidationError, match="boundaries are not unique"):
+        parse_summary(render(repeated_boundary), "repeated-boundary.vcf-sv-stats.json")
+
     missing = copy.deepcopy(value)
     del missing["reports"][0]["statistics"]["events"]
     resign(missing)
@@ -275,6 +281,43 @@ def test_module_parses_and_renders_merged_hg002_fixture() -> None:
 
     assert list(module.vcf_sv_stats_data) == ["vss1-67d5a6c517544715ffd0"]
     assert len(module.sections) == 11
+
+
+def test_module_keeps_zero_count_sections_visible(tmp_path: Path) -> None:
+    summary = make_summary()
+    statistics = summary["reports"][0]["statistics"]
+    summary["callset"]["record_count"] = 0
+    summary["callset"]["allele_count"] = 0
+    statistics["source_records"]["total"] = 0
+    statistics["alleles"] = {"total": 0, "types": {}}
+    statistics["events"]["resolved"] = 0
+    statistics["breakends"] = {
+        "total": 0,
+        "reciprocal_pairs": 0,
+        "without_declared_mate": 0,
+        "unresolved_mate_references": 0,
+    }
+    statistics["filters"] = {}
+    statistics["genotypes"] = {}
+    statistics["copy_number"] = {}
+    statistics["length_bp"]["counts"] = [0, 0, 0]
+    statistics["length_bp"]["n"] = 0
+    resign(summary)
+    source = _write_summary(tmp_path / "zero.vcf-sv-stats.json", summary)
+
+    report.analysis_files = [str(source)]
+    report.search_files(["vcf_sv_stats"])
+    module = MultiqcModule()
+
+    for section_id in (
+        "vcf-sv-stats-types",
+        "vcf-sv-stats-filters",
+        "vcf-sv-stats-genotypes",
+        "vcf-sv-stats-copy-number",
+    ):
+        section = next(item for item in module.sections if item.id == section_id)
+        assert section.print_section is True
+        assert section.alerts[0].affected_samples == ["vss1-test-0000"]
 
 
 def test_module_deduplicates_identical_and_rejects_conflicting_reports(
