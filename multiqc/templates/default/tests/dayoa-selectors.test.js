@@ -43,6 +43,26 @@ const records = [
     ANALYSIS_UNIT_UID: "lib-c",
     LIBRARY_EUID: "library-euid-c",
   },
+  {
+    MultiQCAnalysisID: "spec-d_sample-d_lib-d_rsr",
+    modality: "rsr",
+    SPECIMEN_ID: "spec-d",
+    SPECIMEN_EUID: "spec-euid-d",
+    SAMPLEID: "sample-d",
+    SAMPLE_EUID: "sample-euid-d",
+    ANALYSIS_UNIT_UID: "lib-d",
+    LIBRARY_EUID: "library-euid-d",
+  },
+  {
+    MultiQCAnalysisID: "workflow_global",
+    modality: "global",
+    SPECIMEN_ID: null,
+    SPECIMEN_EUID: null,
+    SAMPLEID: null,
+    SAMPLE_EUID: null,
+    ANALYSIS_UNIT_UID: null,
+    LIBRARY_EUID: null,
+  },
 ];
 
 test("selector values cycle neutral to include to exclude to neutral", () => {
@@ -83,8 +103,20 @@ test("modality and identity filters compose without changing identifiers", () =>
   state.included.sample.add(dayoaIdentityKey(records[1], "sample"));
   const original = structuredClone(records);
 
-  assert.deepEqual(records.filter((record) => dayoaRecordMatches(record, state)), [records[1]]);
+  assert.deepEqual(records.filter((record) => dayoaRecordMatches(record, state)), [records[1], records[4]]);
   assert.deepEqual(records, original);
+});
+
+test("RSR filtering preserves global records and composes with identities", () => {
+  const state = createDayoaSelectorState();
+  state.modality = "rsr";
+  state.included.sample.add(dayoaIdentityKey(records[3], "sample"));
+
+  assert.deepEqual(
+    records.filter((record) => dayoaRecordMatches(record, state)),
+    [records[3], records[4]],
+  );
+  assert.equal(dayoaFiltersAreActive(state), true);
 });
 
 const validGrouping = {

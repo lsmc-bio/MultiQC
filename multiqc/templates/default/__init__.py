@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 
 
 DAYOA_SELECTOR_SCHEMA_VERSION = "dayoa-report-selectors-v2"
-DAYOA_SELECTOR_MODALITIES = {"sr", "lr", "hybrid", "global"}
+DAYOA_SELECTOR_MODALITIES = {"sr", "rsr", "lr", "hybrid", "global"}
 DAYOA_SELECTOR_REQUIRED_FIELDS = {
     "MultiQCAnalysisID",
     "modality",

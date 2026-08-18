@@ -34,7 +34,8 @@ export const cycleDayoaSelectorValue = (state, dimension, key) => {
 };
 
 export const dayoaRecordMatches = (record, state) => {
-  if (state.modality !== "all" && record.modality !== state.modality && record.modality !== "global") return false;
+  if (record.modality === "global") return true;
+  if (state.modality !== "all" && record.modality !== state.modality) return false;
   return Object.keys(dayoaSelectorDimensions).every((dimension) => {
     const key = dayoaIdentityKey(record, dimension);
     if (state.excluded[dimension].has(key)) return false;
@@ -171,7 +172,7 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
     if (
       !saved ||
       saved.schema_version !== "dayoa-report-selector-state-v3" ||
-      !["all", "sr", "lr", "hybrid"].includes(saved.modality)
+      !["all", "sr", "rsr", "lr", "hybrid"].includes(saved.modality)
     )
       return;
     state.modality = saved.modality;

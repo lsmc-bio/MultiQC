@@ -65,6 +65,13 @@ def test_selector_manifest_accepts_missing_optional_persisted_euids(tmp_path: Pa
     assert load_dayoa_selector_manifest(str(manifest))["records"] == [record]
 
 
+def test_selector_manifest_accepts_rsr_modality(tmp_path: Path) -> None:
+    record = selector_record("record-rsr", "rsr")
+    manifest = write_selector_manifest(tmp_path / "selectors.json", [record])
+
+    assert load_dayoa_selector_manifest(str(manifest))["records"] == [record]
+
+
 def test_selector_manifest_rejects_guessed_blank_euid_placeholders(tmp_path: Path) -> None:
     record = selector_record("record-1")
     record["LIBRARY_EUID"] = ""
@@ -79,7 +86,11 @@ def test_lsmc_theme_and_selector_contract_render_in_report(tmp_path: Path) -> No
     data_file.write_text("record-1\t100\nrecord-2\t200\n", encoding="utf-8")
     manifest = write_selector_manifest(
         tmp_path / "selectors.json",
-        [selector_record("record-1"), selector_record("record-2", "lr")],
+        [
+            selector_record("record-1"),
+            selector_record("record-rsr", "rsr"),
+            selector_record("record-2", "lr"),
+        ],
     )
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
@@ -103,6 +114,25 @@ def test_lsmc_theme_and_selector_contract_render_in_report(tmp_path: Path) -> No
     assert "Source Serif 4" in report_html
     assert "test-library-identity-1" in report_html
     assert "Display filters do not alter downloaded data." in report_html
+    expected_buttons = (
+        ("all", "All analysis outputs", "All"),
+        ("sr", "Short Read", "SR only"),
+        ("rsr", "Realigned Short Read", "RSR only"),
+        ("lr", "Long Read", "LR only"),
+        ("hybrid", "Hybrid Short Read + Long Read", "Hybrid only"),
+    )
+    prior_index = -1
+    for modality, accessible_label, visible_label in expected_buttons:
+        fragment = (
+            f'data-modality="{modality}"'
+            f' aria-pressed="{"true" if modality == "all" else "false"}"'
+            f' aria-label="{accessible_label}" title="{accessible_label}"'
+            f'>{visible_label}</button>'
+        )
+        assert fragment in report_html
+        index = report_html.index(fragment)
+        assert index > prior_index
+        prior_index = index
 
 
 def test_unconfigured_report_has_no_dayoa_selector_controls(tmp_path: Path) -> None:
