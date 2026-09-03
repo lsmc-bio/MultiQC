@@ -18,7 +18,7 @@
     </div>
 
     <div class="dayoa-identity-controls">
-      {% for dimension, label in [('specimen', 'Specimens'), ('sample', 'Samples'), ('library', 'Libraries')] %}
+      {% for dimension, label in [('specimen', 'Specimens'), ('sample', 'Samples'), ('analysis_unit', 'Analysis units')] %}
         <div class="dayoa-identity-control" data-identity-dimension="{{ dimension }}">
           <label for="dayoa-{{ dimension }}-search">{{ label }}</label>
           <input

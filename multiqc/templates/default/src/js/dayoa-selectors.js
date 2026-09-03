@@ -3,8 +3,19 @@
 export const dayoaSelectorDimensions = {
   specimen: ["SPECIMEN_ID", "SPECIMEN_EUID"],
   sample: ["SAMPLEID", "SAMPLE_EUID"],
-  library: ["ANALYSIS_UNIT_UID", "LIBRARY_EUID"],
+  analysis_unit: ["ANALYSIS_UNIT_UID", "ANALYSIS_UNIT_EUID"],
 };
+
+const dayoaSelectorTopLevelFields = [
+  "plot_groupings",
+  "record_count",
+  "records",
+  "schema_version",
+  "selector_record_count",
+  "selector_records",
+  "source_row_count",
+  "source_staging_manifest",
+];
 
 export const createDayoaSelectorState = () => ({
   modality: "all",
@@ -16,6 +27,76 @@ export const dayoaIdentityKey = (record, dimension) => {
   const [idField, euidField] = dayoaSelectorDimensions[dimension];
   if (!record[idField] && !record[euidField]) return null;
   return JSON.stringify([record[idField], record[euidField]]);
+};
+
+export const dayoaSelectorIdentityKeys = (records, dimension) =>
+  [
+    ...new Set(
+      records
+        .filter((record) => record.selector_eligible === true)
+        .map((record) => dayoaIdentityKey(record, dimension))
+        .filter(Boolean),
+    ),
+  ];
+
+export const validateDayoaSelectorManifest = (manifest) => {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+    throw new Error("DayOA report selector manifest must be an object");
+  }
+  const actualFields = Object.keys(manifest).sort();
+  if (JSON.stringify(actualFields) !== JSON.stringify(dayoaSelectorTopLevelFields)) {
+    throw new Error("DayOA report selector manifest must contain the exact v3 top-level fields");
+  }
+  if (manifest.schema_version !== "dayoa-report-selectors-v3") {
+    throw new Error("DayOA report selector manifest must use dayoa-report-selectors-v3");
+  }
+  if (!Array.isArray(manifest.records) || manifest.records.length === 0) {
+    throw new Error("DayOA report selector manifest records must be a non-empty array");
+  }
+  if (!Array.isArray(manifest.selector_records)) {
+    throw new Error("DayOA report selector manifest selector_records must be an array");
+  }
+  if (!Number.isInteger(manifest.record_count) || manifest.record_count !== manifest.records.length) {
+    throw new Error("DayOA report selector manifest record_count does not match records");
+  }
+  if (
+    !Number.isInteger(manifest.selector_record_count) ||
+    manifest.selector_record_count !== manifest.selector_records.length
+  ) {
+    throw new Error("DayOA report selector manifest selector_record_count does not match selector_records");
+  }
+  if (!Number.isInteger(manifest.source_row_count) || manifest.source_row_count < manifest.record_count) {
+    throw new Error("DayOA report selector manifest source_row_count is invalid");
+  }
+  if (typeof manifest.source_staging_manifest !== "string" || !manifest.source_staging_manifest) {
+    throw new Error("DayOA report selector manifest source_staging_manifest is invalid");
+  }
+  if (!manifest.plot_groupings || typeof manifest.plot_groupings !== "object" || Array.isArray(manifest.plot_groupings)) {
+    throw new Error("DayOA report selector manifest plot_groupings must be an object");
+  }
+
+  const knownAnalysisIds = manifest.records.map((record) => record.MultiQCAnalysisID);
+  if (knownAnalysisIds.some((analysisId) => typeof analysisId !== "string" || !analysisId)) {
+    throw new Error("DayOA report selector manifest has a blank or invalid MultiQCAnalysisID");
+  }
+  if (new Set(knownAnalysisIds).size !== knownAnalysisIds.length) {
+    throw new Error("DayOA report selector manifest repeats a MultiQCAnalysisID");
+  }
+  if (manifest.records.some((record) => typeof record.selector_eligible !== "boolean")) {
+    throw new Error("DayOA report selector manifest records must declare boolean selector_eligible values");
+  }
+  const expectedSelectorRecords = manifest.records.filter((record) => record.selector_eligible);
+  if (
+    expectedSelectorRecords.length !== manifest.selector_records.length ||
+    expectedSelectorRecords.some(
+      (record, index) => JSON.stringify(record) !== JSON.stringify(manifest.selector_records[index]),
+    )
+  ) {
+    throw new Error(
+      "DayOA report selector manifest selector_records must equal the in-order selector-eligible subset of records",
+    );
+  }
+  return manifest;
 };
 
 export const dayoaSelectorValueState = (state, dimension, key) => {
@@ -117,17 +198,8 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   const manifestElement = document.getElementById("dayoa_report_selectors");
   if (!manifestElement) return;
 
-  const manifest = JSON.parse(manifestElement.textContent);
-  if (manifest.schema_version !== "dayoa-report-selectors-v2" || !Array.isArray(manifest.records)) {
-    throw new Error("Invalid embedded DayOA report selector manifest");
-  }
+  const manifest = validateDayoaSelectorManifest(JSON.parse(manifestElement.textContent));
   const knownAnalysisIds = manifest.records.map((record) => record.MultiQCAnalysisID);
-  if (knownAnalysisIds.some((analysisId) => typeof analysisId !== "string" || !analysisId)) {
-    throw new Error("DayOA report selector manifest has a blank or invalid MultiQCAnalysisID");
-  }
-  if (new Set(knownAnalysisIds).size !== knownAnalysisIds.length) {
-    throw new Error("DayOA report selector manifest repeats a MultiQCAnalysisID");
-  }
   const plotGroupings = validateDayoaPlotGroupings(manifest.plot_groupings, knownAnalysisIds);
 
   const state = createDayoaSelectorState();
@@ -139,8 +211,8 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   };
   const availableIdentities = Object.fromEntries(
     Object.keys(dayoaSelectorDimensions).map((dimension) => {
-      const keys = new Set(manifest.records.map((record) => dayoaIdentityKey(record, dimension)).filter(Boolean));
-      return [dimension, [...keys].sort((left, right) => identityLabel(left).localeCompare(identityLabel(right)))];
+      const keys = dayoaSelectorIdentityKeys(manifest.selector_records, dimension);
+      return [dimension, keys.sort((left, right) => identityLabel(left).localeCompare(identityLabel(right)))];
     }),
   );
 

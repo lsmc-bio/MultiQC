@@ -23,20 +23,48 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 
-DAYOA_SELECTOR_SCHEMA_VERSION = "dayoa-report-selectors-v2"
+DAYOA_SELECTOR_SCHEMA_VERSION = "dayoa-report-selectors-v3"
 DAYOA_SELECTOR_MODALITIES = {"sr", "rsr", "lr", "hybrid", "global"}
+DAYOA_SELECTOR_TOP_LEVEL_FIELDS = {
+    "schema_version",
+    "records",
+    "plot_groupings",
+    "source_staging_manifest",
+    "source_row_count",
+    "record_count",
+    "selector_record_count",
+    "selector_records",
+}
 DAYOA_SELECTOR_REQUIRED_FIELDS = {
     "MultiQCAnalysisID",
+    "display_multiqc_analysis_id",
     "modality",
+    "evidence_modality",
     "SPECIMEN_ID",
     "SPECIMEN_EUID",
     "SAMPLEID",
     "SAMPLE_EUID",
+    "ANALYSIS_ID",
     "ANALYSIS_UNIT_UID",
+    "ANALYSIS_UNIT_EUID",
+    "DELIVERY_EUID",
     "LIBRARY_EUID",
+    "LIBRARY_IDS",
+    "LIBRARY_EUIDS",
+    "SEQUENCING_INPUT_UIDS",
+    "INPUT_LIBRARY_IDS",
+    "INPUT_ROLES",
+    "INPUT_ORDINALS",
+    "INPUT_MODALITIES",
+    "INPUT_LAYOUTS",
+    "entity_scope",
+    "selector_eligible",
+    "general_stats_eligible",
     "section",
     "grain",
     "pair_endpoint_roles",
+    "stable_multiqc_record_ids",
+    "original_multiqc_analysis_ids",
 }
 
 
@@ -51,22 +79,64 @@ def load_dayoa_selector_manifest(path: str) -> Dict[str, Any]:
 
     if not isinstance(manifest, dict):
         raise ValueError(f"DayOA selector manifest must be a JSON object: {manifest_path}")
+    if set(manifest) != DAYOA_SELECTOR_TOP_LEVEL_FIELDS:
+        missing = sorted(DAYOA_SELECTOR_TOP_LEVEL_FIELDS - set(manifest))
+        unexpected = sorted(set(manifest) - DAYOA_SELECTOR_TOP_LEVEL_FIELDS)
+        raise ValueError(
+            "DayOA selector manifest must contain the exact v3 top-level fields; "
+            f"missing={missing}, unexpected={unexpected}: {manifest_path}"
+        )
     if manifest.get("schema_version") != DAYOA_SELECTOR_SCHEMA_VERSION:
         raise ValueError(
             f"DayOA selector manifest schema_version must be {DAYOA_SELECTOR_SCHEMA_VERSION}: {manifest_path}"
         )
 
-    records = manifest.get("records")
+    records = manifest["records"]
     if not isinstance(records, list) or len(records) == 0:
         raise ValueError(f"DayOA selector manifest records must be a non-empty array: {manifest_path}")
+    selector_records = manifest["selector_records"]
+    if not isinstance(selector_records, list):
+        raise ValueError(f"DayOA selector manifest selector_records must be an array: {manifest_path}")
+    for field, expected in (
+        ("record_count", len(records)),
+        ("selector_record_count", len(selector_records)),
+    ):
+        value = manifest[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+            raise ValueError(
+                f"DayOA selector manifest {field} must equal {expected}, got {value!r}: {manifest_path}"
+            )
+    source_row_count = manifest["source_row_count"]
+    if isinstance(source_row_count, bool) or not isinstance(source_row_count, int) or source_row_count < len(records):
+        raise ValueError(
+            "DayOA selector manifest source_row_count must be an integer at least as large as record_count: "
+            f"{manifest_path}"
+        )
+    if not isinstance(manifest["source_staging_manifest"], str) or not manifest["source_staging_manifest"].strip():
+        raise ValueError(f"DayOA selector manifest source_staging_manifest must be non-empty: {manifest_path}")
+    if not isinstance(manifest["plot_groupings"], dict):
+        raise ValueError(f"DayOA selector manifest plot_groupings must be an object: {manifest_path}")
 
     seen_analysis_ids: set[str] = set()
-    identity_maps: Dict[str, Dict[str, Optional[str]]] = {"specimen": {}, "sample": {}, "library": {}}
-    identity_reverse_maps: Dict[str, Dict[str, str]] = {"specimen": {}, "sample": {}, "library": {}}
+    identity_maps: Dict[str, Dict[str, Optional[str]]] = {
+        "specimen": {},
+        "sample": {},
+        "analysis_unit": {},
+        "delivery": {},
+        "library": {},
+    }
+    identity_reverse_maps: Dict[str, Dict[str, str]] = {
+        "specimen": {},
+        "sample": {},
+        "analysis_unit": {},
+        "delivery": {},
+        "library": {},
+    }
     identity_fields = {
         "specimen": ("SPECIMEN_ID", "SPECIMEN_EUID"),
         "sample": ("SAMPLEID", "SAMPLE_EUID"),
-        "library": ("ANALYSIS_UNIT_UID", "LIBRARY_EUID"),
+        "analysis_unit": ("ANALYSIS_UNIT_UID", "ANALYSIS_UNIT_EUID"),
+        "delivery": ("ANALYSIS_UNIT_UID", "DELIVERY_EUID"),
     }
 
     for index, record in enumerate(records, start=1):
@@ -84,17 +154,26 @@ def load_dayoa_selector_manifest(path: str) -> Dict[str, Any]:
         if analysis_id in seen_analysis_ids:
             raise ValueError(f"Duplicate MultiQCAnalysisID '{analysis_id}' in {manifest_path}")
         seen_analysis_ids.add(analysis_id)
-
-        modality = record["modality"]
-        if modality not in DAYOA_SELECTOR_MODALITIES:
+        if record["display_multiqc_analysis_id"] != analysis_id:
             raise ValueError(
-                f"DayOA selector record {index} has invalid modality '{modality}', expected one of "
-                f"{', '.join(sorted(DAYOA_SELECTOR_MODALITIES))}: {manifest_path}"
+                f"DayOA selector record {index} display_multiqc_analysis_id must equal MultiQCAnalysisID: "
+                f"{manifest_path}"
             )
 
-        for field in ("section", "grain"):
+        for modality_field in ("modality", "evidence_modality"):
+            modality = record[modality_field]
+            if modality not in DAYOA_SELECTOR_MODALITIES:
+                raise ValueError(
+                    f"DayOA selector record {index} has invalid {modality_field} '{modality}', expected one of "
+                    f"{', '.join(sorted(DAYOA_SELECTOR_MODALITIES))}: {manifest_path}"
+                )
+
+        for field in ("entity_scope", "section", "grain"):
             if not isinstance(record[field], str) or not record[field].strip():
                 raise ValueError(f"DayOA selector record {index} has a blank {field}: {manifest_path}")
+        for field in ("selector_eligible", "general_stats_eligible"):
+            if not isinstance(record[field], bool):
+                raise ValueError(f"DayOA selector record {index} {field} must be boolean: {manifest_path}")
         if not isinstance(record["pair_endpoint_roles"], list) or not all(
             isinstance(role, str) and role.strip() for role in record["pair_endpoint_roles"]
         ):
@@ -118,11 +197,13 @@ def load_dayoa_selector_manifest(path: str) -> Dict[str, Any]:
                     f"DayOA selector record {index} has an invalid {euid_field}; use a persisted non-empty EUID "
                     f"or JSON null, never a guessed placeholder: {manifest_path}"
                 )
-            previous_euid = identity_maps[identity_type].setdefault(identity, euid)
-            if previous_euid != euid:
+            previous_euid = identity_maps[identity_type].get(identity)
+            if previous_euid is not None and euid is not None and previous_euid != euid:
                 raise ValueError(
                     f"DayOA selector record {index} has conflicting {identity_type} identity mapping: {manifest_path}"
                 )
+            if identity not in identity_maps[identity_type] or previous_euid is None:
+                identity_maps[identity_type][identity] = euid
             if euid is not None:
                 previous_id = identity_reverse_maps[identity_type].setdefault(euid, identity)
                 if previous_id != identity:
@@ -130,6 +211,68 @@ def load_dayoa_selector_manifest(path: str) -> Dict[str, Any]:
                         f"DayOA selector record {index} has conflicting {identity_type} identity mapping: "
                         f"{manifest_path}"
                     )
+
+        library_ids = record["LIBRARY_IDS"]
+        library_euids = record["LIBRARY_EUIDS"]
+        if not isinstance(library_ids, list) or not all(
+            isinstance(library_id, str) and library_id.strip() for library_id in library_ids
+        ):
+            raise ValueError(
+                f"DayOA selector record {index} LIBRARY_IDS must be an array of non-empty strings: "
+                f"{manifest_path}"
+            )
+        if not isinstance(library_euids, list) or not all(
+            library_euid is None or (isinstance(library_euid, str) and library_euid.strip())
+            for library_euid in library_euids
+        ):
+            raise ValueError(
+                f"DayOA selector record {index} LIBRARY_EUIDS must contain persisted non-empty EUIDs or null: "
+                f"{manifest_path}"
+            )
+        if len(library_ids) != len(library_euids):
+            raise ValueError(
+                f"DayOA selector record {index} must pair every LIBRARY_ID with one LIBRARY_EUID: "
+                f"{manifest_path}"
+            )
+        if record["selector_eligible"] and not library_ids:
+            raise ValueError(
+                f"DayOA selector record {index} must declare at least one physical library: {manifest_path}"
+            )
+        singular_library_euid = record["LIBRARY_EUID"]
+        if singular_library_euid is not None and (
+            not isinstance(singular_library_euid, str) or not singular_library_euid.strip()
+        ):
+            raise ValueError(
+                f"DayOA selector record {index} has an invalid LIBRARY_EUID, never a guessed placeholder: "
+                f"{manifest_path}"
+            )
+        expected_singular_library_euid = library_euids[0] if len(library_ids) == 1 else None
+        if singular_library_euid != expected_singular_library_euid:
+            raise ValueError(
+                f"DayOA selector record {index} LIBRARY_EUID must equal the sole physical library EUID, "
+                f"or be null when zero or multiple libraries are declared: {manifest_path}"
+            )
+        for library_id, library_euid in zip(library_ids, library_euids):
+            previous_euid = identity_maps["library"].get(library_id)
+            if previous_euid is not None and library_euid is not None and previous_euid != library_euid:
+                raise ValueError(
+                    f"DayOA selector record {index} has conflicting library identity mapping: {manifest_path}"
+                )
+            if library_id not in identity_maps["library"] or previous_euid is None:
+                identity_maps["library"][library_id] = library_euid
+            if library_euid is not None:
+                previous_id = identity_reverse_maps["library"].setdefault(library_euid, library_id)
+                if previous_id != library_id:
+                    raise ValueError(
+                        f"DayOA selector record {index} has conflicting library identity mapping: {manifest_path}"
+                    )
+
+    expected_selector_records = [record for record in records if record["selector_eligible"]]
+    if selector_records != expected_selector_records:
+        raise ValueError(
+            "DayOA selector manifest selector_records must exactly equal the in-order selector-eligible "
+            f"subset of records: {manifest_path}"
+        )
 
     return manifest
 
