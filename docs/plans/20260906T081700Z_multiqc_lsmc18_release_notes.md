@@ -71,6 +71,10 @@ Cell tooltips retain underlying and display-unit values. These controls change
 presentation, not raw measurements, thresholds, receipt states or exports.
 General plot-axis/tooltip precision coverage is not complete in this release.
 
+Clipboard unit text is extracted by an HTML parser during generation, replacing
+incomplete client-side regex stripping identified by the release CodeQL check.
+Raw numeric values, precise exports and native table HTML are preserved.
+
 The Links section supports report-relative files and external HTTP/HTTPS URLs.
 Relative links resolve consistently against the report index. External query
 strings, including signatures, are preserved; executable URL schemes are

@@ -71,7 +71,7 @@ def extract_tables(content: str):
                         {
                             "value": cell.get("data-numeric-value"),
                             "field": cell.get("data-field-id"),
-                            "suffix": cell.get("data-numeric-suffix", ""),
+                            "suffix": BeautifulSoup(cell.get("data-numeric-suffix", ""), "html.parser").get_text(),
                         }
                         for cell in cells
                     ],

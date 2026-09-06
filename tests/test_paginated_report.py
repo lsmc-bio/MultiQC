@@ -12,9 +12,23 @@ from click.testing import CliRunner
 
 import multiqc
 from multiqc import config
-from multiqc.core.paginated import group_pages
+from multiqc.core.paginated import extract_tables, group_pages
 from multiqc.core.presentation import load_presentation, main, safe_url
 from multiqc.core.update_config import ClConfig
+
+
+def test_clipboard_units_are_parser_extracted_text():
+    content = (
+        '<table id="units" class="mqc_per_sample_table"><thead><tr><th id="header_rate">Rate</th></tr>'
+        '</thead><tbody><tr><td data-numeric-value="0.123456789" data-field-id="units/rate" '
+        'data-numeric-suffix="&lt;span&gt;reads &amp;amp; bases&lt;/span&gt;">0.123456789</td></tr></tbody></table>'
+    )
+    _, tables = extract_tables(content)
+    row = tables["units"]["rows"][0]
+    assert row["numeric"][0]["suffix"] == "reads & bases"
+    assert row["numeric"][0]["value"] == "0.123456789"
+    assert row["precise"] == ["0.123456789"]
+    assert "&lt;span&gt;" in row["html"]
 
 
 @pytest.fixture

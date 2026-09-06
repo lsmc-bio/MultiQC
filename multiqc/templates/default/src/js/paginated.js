@@ -26,7 +26,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const numeric = row.numeric[i];
       if (numeric.value == null) return value;
       const formatted = formatSignificant(numeric.value, fieldDigits(numeric.field), window.mqc_config?.decimalPoint_format);
-      return formatted == null ? value : formatted + (numeric.suffix ? ` ${numeric.suffix.replace(/<[^>]*>/g, "")}` : "");
+      return formatted == null ? value : formatted + (numeric.suffix ? ` ${numeric.suffix}` : "");
     });
     model.tsv = (rows = data.rows, precise = false) => [data.headers, ...rows.map((row) => precise ? row.precise : model.cells(row))].map((cells) => cells.map((v) => String(v).replace(/[\t\r\n]/g, " ")).join("\t")).join("\n") + "\n";
     model.csv = (format) => {
