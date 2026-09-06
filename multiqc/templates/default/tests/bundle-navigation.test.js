@@ -17,3 +17,10 @@ test("plain output anchors and selector-only navigation remain distinct", () => 
   assert.deepEqual(bundleFragment("#tool-section"), { section: "tool-section", state: null });
   assert.equal(bundleFragment(bundleHref("page.html", {}).slice(9)).section, null);
 });
+
+test("within-tab output links retain the complete selected state", () => {
+  const state = { modality: "sr", included: {}, excluded: {} };
+  const link = bundleHref("#output-two", state);
+  assert.equal(bundleFragment(link).section, "output-two");
+  assert.deepEqual(JSON.parse(bundleFragment(link).state), state);
+});

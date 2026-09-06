@@ -484,5 +484,10 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
       applyFilters();
     });
     applyFilters();
+    if (window.MQCBundle) window.addEventListener("hashchange", () => {
+      restoreState();
+      updateControls();
+      applyFilters();
+    });
   });
 })();

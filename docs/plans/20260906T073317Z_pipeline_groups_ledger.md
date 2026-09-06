@@ -28,3 +28,10 @@ Owner: primary agent. No release or scientific workflow execution authorized her
 
 This amendment's completion is separate from the full original plan's open
 scientific parity, precision, cross-browser and performance acceptance gates.
+
+Independent review (Astra xhigh) identified two issues before handoff:
+within-tab links must carry selector state and restore it on history changes;
+the bundle comparison exit code must reject changed scientific exports, even
+when table/plot payloads match. Corrected both and added navigation regressions.
+Also scoped group scroll offsets to grouped reports only. Draft03 rendering
+continues on its frozen candidate; a corrected fresh draft will follow.

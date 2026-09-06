@@ -29,7 +29,7 @@ window.addEventListener('error', function(event) {
   {% if index %}
   {% for item in navigation %}<li><a href="{{ item.href | e }}" data-bundle-nav class="nav-l1">{{ item.title | e }}</a></li>{% endfor %}
   {% else %}
-  {% for output in page.outputs %}<li><a href="#{{ output.anchor | e }}" class="nav-l1">{{ output.title | e }}</a></li>{% endfor %}
+  {% for output in page.outputs %}<li><a href="#{{ output.anchor | e }}" data-bundle-nav class="nav-l1">{{ output.title | e }}</a></li>{% endfor %}
   {% endif %}
   </ul>
   {% else %}
@@ -39,7 +39,7 @@ window.addEventListener('error', function(event) {
   {% endif %}
 </div></aside>
 {% if not index %}{% include 'toolbox.html' %}{% endif %}
-<main class="mainpage"><div class="p-4 pe-5">
+<main class="mainpage{% if bundle.grouped %} mqc-grouped-report{% endif %}"><div class="p-4 pe-5">
 {% if bundle.grouped %}
 <nav class="mqc-group-tabs" aria-label="Pipeline stage tabs">
 <a href="{{ bundle.entry | e }}" data-bundle-nav {% if index %}aria-current="page"{% endif %}>Overview</a>

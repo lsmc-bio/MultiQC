@@ -102,9 +102,13 @@ def main():
         )
         else 1
     )
+    checks["export_rc"] = int(
+        not checks["scientific_export_paths_identical"] or bool(checks["scientific_exports_byte_changed"])
+    )
+    checks["rc"] = checks["data_payload_rc"] or checks["export_rc"]
     args.receipt.write_text(json.dumps(checks, indent=2))
     print(json.dumps({k: v for k, v in checks.items() if k != "scientific_exports_byte_identical"}, indent=2))
-    return checks["data_payload_rc"]
+    return checks["rc"]
 
 
 if __name__ == "__main__":

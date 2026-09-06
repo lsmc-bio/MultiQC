@@ -250,6 +250,7 @@ def test_grouped_render_retains_complete_table_models_and_plot_ids(bundle):
     page = BeautifulSoup((output / manifest["pages"][1]["path"]).read_text(), "html.parser")
     assert len(page.select('.mqc-group-tabs a[aria-current="page"]')) == 1
     assert page.select_one('.mqc-group-tabs a[aria-current="page"]').text == "All QC"
+    assert all(a.has_attr("data-bundle-nav") for a in page.select(".side-nav .mqc-nav a"))
     assert not page.select("table[data-paginated-table] tbody tr")
 
     def tables(base, inventory):
