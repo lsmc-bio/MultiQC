@@ -108,7 +108,7 @@ particular, the approximately 3.6 MiB index still exceeds the 2 MB target;
 whole-report AI metadata deduplication, full numeric/plot acceptance,
 Inflection integration, 192-AU scaling and cross-browser gates remain open.
 
-## Header layout amendment, 2026-09-06 08:08 UTC
+## Header layout amendment, 2026-09-06 08:04 UTC
 
 User requests report title above stage tabs, logo at the upper right on the
 index and all section pages, and the active section title above the Report
@@ -119,5 +119,13 @@ FSx inputs. No scientific workflows, comparisons, browser tests or release.
 
 | ID | Area | Requirement | Status | Category | Gate | Owner | Evidence | Root Cause | Terminal Note |
 |---|---|---|---|---|---|---|---|---|---|
-| HEADER-01 | Template | Global title/logo and section-first sidebar | IN_PROGRESS | feature_implementation | user request | primary | Shared paginated masthead, header guard and CSS | | |
-| HEADER-02 | Example | Regenerate 48-AU report and provide review files | OPEN | feature_implementation | user request | primary | Existing FSx inputs, fresh draft05 output | | Tests explicitly skipped |
+| HEADER-01 | Template | Global title/logo and section-first sidebar | SUCCESS | feature_implementation | user request | primary | Shared paginated masthead, header guard and CSS; asset build complete | | Tests explicitly skipped by user direction |
+| HEADER-02 | Example | Regenerate 48-AU report and provide review files | IN_PROGRESS | feature_implementation | user request | primary | Existing FSx inputs, fresh draft05 output | | |
+
+Candidate renderer: `fd1087f3571db53e6fa54c90b59cc5fa5c104b09`.
+Report-only environment wheel SHA-256:
+`459154c02bd1eb47d8495e0d9e9b677521ba0649b030fe005e53947a5d0960b5`.
+Reused the existing one-window/one-pane interactive report tmux on pclu-19074.
+Recorded source read visit and acquired the candidate output-root write lock.
+Other cluster jobs belong to the separate segdup-tuning analysis and were not
+modified. This request submits no scientific workflow work.
