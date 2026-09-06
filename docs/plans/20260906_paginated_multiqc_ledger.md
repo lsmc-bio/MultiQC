@@ -187,3 +187,52 @@ Persistent report-only tmux: `ilmn14-multiqc-pagination-validation-20260906`.
 
 The first draft must not wait for exhaustive numeric and multi-browser gates.
 Deliver it with explicit caveats, then continue those gates and remaining fixes.
+
+### Corrected draft02 handoff, 2026-09-06 07:18 UTC
+
+Browser inspection of draft01 caught global significant-digit formatting rounding
+integer counts. Corrected the formatter to retain integers exactly and added
+regression cases. The draft replay now explicitly uses the bundled geometric
+LSMC mark, overriding the historical configuration's older JPEG. Corrected the
+missing-resource alert target ID. These are renderer/presentation changes only.
+
+Candidate code: `9d8a0611f0aacd8fb89c67caef402b44dbd3b1bd`.
+Second candidate wheel SHA-256:
+`166869749799e5f558bda7cef13574bf60c12d612992ee2a0437ade35aaa2115`.
+No dependency changes to the original production environment.
+
+- `report-draft02/render-receipt.json`: rc=0; 165.4318 s rendering;
+  peak child RSS 2,307,884 KiB; 4,263 staged files and original report/configs
+  hash-unchanged; zero scientific workflows launched.
+- ZIP `ILMN-14_48AU_paginated_draft02.zip` SHA-256:
+  `c134a215f9f6abff8bbc00c689b9764ca49a32ce49cd34133c6270108363eb4a`.
+  FSx and downloaded Mac copies match; extraction and bundle manifest hashes
+  verify successfully.
+- Download command completed with rc=0, SSM receipt
+  `c1faf903-10be-47a3-885a-7eb1939a9ad8`.
+- Private relay object:
+  `s3://lsmc-ssf-sequencing-data/_codex_report_previews/ilmn14-pagination-20260906t064750z/dyec-headnode-transfer/pclu-19074/20260906T071436Z-13bc8657fb18/ILMN-14_48AU_paginated_draft02.zip`.
+- Mac ZIP: `output/ILMN-14_48AU_paginated_draft02.zip`; extracted entry:
+  `output/ILMN-14_48AU_paginated_draft02/report-draft02/index.html`.
+- Chrome 152 local-file spot checks on Apple M5, 32 GiB, macOS 26.5.2:
+  index 1,068 DOM nodes, 48 AUs, 106 section links; a single observed load event
+  at 93.9 ms. This is not a controlled performance acceptance measurement.
+  The original report's automated open timed out at 30 s; no speedup ratio is
+  claimed because complete comparable timing evidence is not available.
+- GIAB section: 510 model rows, 50 DOM rows, 11 pages. Page navigation checked.
+  351 visible integer cells compared with presentation-unit values, zero
+  mismatches. Example 2,512,291,789 remains exact. FDR
+  0.0006842177795077984 displays as 0.000684218 instead of the original 0.0.
+  This is a spot check, not the requested exhaustive field-by-field comparison.
+- No browser errors observed on the checked index/GIAB pages. Screenshots under
+  `output/playwright/ilmn14-draft02-index.png` and `ilmn14-draft02-giab.png`.
+- Latest focused tests: 35 Python passed; 18 JavaScript passed. DayOA candidate
+  `3256fa62` has 12 focused tests passing and a clean isolated local worktree.
+- Draft output-root write lock released after terminal rendering/packaging and
+  verified download. Named tmux shell and interactive SSM shell were left open.
+
+The index remains approximately 3.7 MB and therefore misses the 2 MB gate.
+Full-report AI metadata duplication remains, along with the other documented
+numeric/content, UI, Inflection, scaling, and browser acceptance work. See
+`20260906_paginated_draft_review.md`. Draft delivery does not terminalize Gate 7
+or the full objective. All rows are not terminal; implementation is incomplete.
