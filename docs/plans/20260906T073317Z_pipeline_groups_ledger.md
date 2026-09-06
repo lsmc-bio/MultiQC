@@ -31,10 +31,10 @@ scientific parity, precision, cross-browser and performance acceptance gates.
 
 Independent review (Astra xhigh) identified two issues before handoff:
 within-tab links must carry selector state and restore it on history changes;
-the bundle comparison exit code must reject changed scientific exports, even
-when table/plot payloads match. Corrected both and added navigation regressions.
-Also scoped group scroll offsets to grouped reports only. Draft03 rendering
-continues on its frozen candidate; a corrected fresh draft will follow.
+the bundle comparison must flag changed scientific exports for investigation,
+even when table/plot payloads match. Corrected both and added navigation
+regressions. Also scoped group scroll offsets to grouped reports only.
+The corrected draft04 supersedes draft03 for review; both are preserved.
 
 ## Final grouped draft evidence, 2026-09-06 07:56 UTC
 
@@ -58,12 +58,17 @@ continues on its frozen candidate; a corrected fresh draft will follow.
   corresponding exported TSV columns. Only X jitter changes within +/-0.05
   of the same categorical coordinate. No report or source was changed by this
   investigation.
-- Strict bundle comparison intentionally remains rc=1, not waived: six exports
+- The strict byte-comparison diagnostic returns rc=1: six exports
   differ bytewise (`llms-full.txt`, `multiqc.log`, `multiqc.parquet`,
   `multiqc_data.json`, and the two sex-check plot TSVs). JSON top-level
   differences are command, creation date, comment, title, output directory and
-  those same two jittered plot dumps; all other fields match. The original
-  plan's exhaustive rendered-value/export acceptance remains open.
+  those same two jittered plot dumps; all other fields match. Following the
+  user's clarification, byte identity is not the scientific acceptance gate.
+  Hashes remain source-integrity and transfer checks. Acceptance concerns
+  presented measurements, identities, units, statuses and meaningful precision;
+  timestamps, file layout and within-category jitter are not scientific changes.
+  The original plan's exhaustive rendered-value/export acceptance remains open;
+  in particular, Parquet semantic parity has not been independently audited.
 - Chrome 152 local-file navigation reached all ten tabs with their exact
   expected plot counts (13/13/6/7/16/5/23/3/4/11), no visible resource errors
   and zero HTTP(S) resource requests during these checks. These are functional
