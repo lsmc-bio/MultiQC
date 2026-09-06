@@ -21,7 +21,12 @@ window.addEventListener('error', function(event) {
 </head>
 <body>
 <aside class="side-nav-wrapper sticky-top"><div class="side-nav">
+  {% if not index %}
+  <h1 class="side-nav-title mqc-section-nav-title">{{ page.title | e }}</h1>
+  <p class="mx-3 mb-3"><a href="{{ bundle.entry | e }}" data-bundle-nav>Report index</a></p>
+  {% else %}
   <h1 class="side-nav-title"><a href="{{ bundle.entry | e }}" data-bundle-nav>Report index</a></h1>
+  {% endif %}
   {% include 'theme_toggle.html' %}
   {% if bundle.grouped %}
   <p class="mx-3 mt-3">{% if index %}Pipeline stages{% else %}On this tab{% endif %}</p>
@@ -40,6 +45,15 @@ window.addEventListener('error', function(event) {
 </div></aside>
 {% if not index %}{% include 'toolbox.html' %}{% endif %}
 <main class="mainpage{% if bundle.grouped %} mqc-grouped-report{% endif %}"><div class="p-4 pe-5">
+<header class="mqc-report-masthead">
+  <div class="mqc-report-heading">
+    {% if config.title is not none %}<h1 id="page_title">{{ config.title | e }}</h1>{% endif %}
+    {% if config.subtitle is not none %}<p class="lead">{{ config.subtitle | e }}</p>{% endif %}
+  </div>
+  <div class="lsmc-native-brand" aria-label="Report branding">
+    <img src="{{ report.presentation.style.brand.logo | e }}" width="{{ report.presentation.style.brand.width }}" alt="{{ report.presentation.style.brand.alt | e }}">
+  </div>
+</header>
 {% if bundle.grouped %}
 <nav class="mqc-group-tabs" aria-label="Pipeline stage tabs">
 <a href="{{ bundle.entry | e }}" data-bundle-nav {% if index %}aria-current="page"{% endif %}>Overview</a>
@@ -48,7 +62,7 @@ window.addEventListener('error', function(event) {
 {% if not index %}<h1 class="mqc-group-title">{{ page.title | e }}</h1><p>{{ page.description | e }}</p>
 <details class="mqc-group-context"><summary>Report context and provenance</summary>{% endif %}
 {% endif %}
-{% include 'header.html' %}
+{% with separate_report_masthead = true %}{% include 'header.html' %}{% endwith %}
 {% include 'presentation.html' %}
 {% if bundle.grouped and not index %}</details>{% endif %}
 {% if bundle.identities.analysis_unit %}{% include 'dayoa_selectors.html' %}{% endif %}

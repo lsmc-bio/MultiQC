@@ -107,3 +107,17 @@ complete: yes. Full original implementation objective complete: no. In
 particular, the approximately 3.6 MiB index still exceeds the 2 MB target;
 whole-report AI metadata deduplication, full numeric/plot acceptance,
 Inflection integration, 192-AU scaling and cross-browser gates remain open.
+
+## Header layout amendment, 2026-09-06 08:08 UTC
+
+User requests report title above stage tabs, logo at the upper right on the
+index and all section pages, and the active section title above the Report
+index sidebar link. Baseline: clean candidate branch at `763515a38`, draft04
+preserved. Only template layout and compiled presentation CSS will change.
+Explicit user direction: skip tests and regenerate from the existing 48-AU
+FSx inputs. No scientific workflows, comparisons, browser tests or release.
+
+| ID | Area | Requirement | Status | Category | Gate | Owner | Evidence | Root Cause | Terminal Note |
+|---|---|---|---|---|---|---|---|---|---|
+| HEADER-01 | Template | Global title/logo and section-first sidebar | IN_PROGRESS | feature_implementation | user request | primary | Shared paginated masthead, header guard and CSS | | |
+| HEADER-02 | Example | Regenerate 48-AU report and provide review files | OPEN | feature_implementation | user request | primary | Existing FSx inputs, fresh draft05 output | | Tests explicitly skipped |

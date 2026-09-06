@@ -1051,6 +1051,18 @@ g.annotation {
   }
 }
 // Pipeline-stage tabs are ordinary links between independent offline pages.
+.mqc-report-masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  .mqc-report-heading { min-width: 0; overflow-wrap: anywhere; }
+  #page_title { margin: 0 0 .5rem; }
+  .lsmc-native-brand { flex-shrink: 0; }
+  .lsmc-native-brand img { max-width: 100%; height: auto; }
+}
+.side-nav-title.mqc-section-nav-title { white-space: normal; overflow-wrap: anywhere; }
 .mqc-group-tabs {
   display: flex;
   flex-wrap: wrap;

@@ -8,6 +8,7 @@ was generated and the button that launches the welcome tour.
 
 #}
 
+{% if not separate_report_masthead %}
 <h1 id="page_title" class="mb-3">
   {% if config.custom_logo is not none and report.presentation is not defined %}
     <div class="float-end">
@@ -54,6 +55,7 @@ was generated and the button that launches the welcome tour.
   </h1>
 {% endif %}
 
+{% endif %}
 {% if config.intro_text != False %}
   <p class="lead">
     {{ config.intro_text if config.intro_text is not none else 'A modular tool to aggregate results from bioinformatics analyses across many samples into a single report.' }}
