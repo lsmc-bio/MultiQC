@@ -78,7 +78,11 @@ custom_css_files: List[str]
 simple_output: bool
 template: str
 template_dark_mode: bool
-lsmc_default_theme: Literal["original", "lsmc", "dark", "light", "nosee", "tacky"]
+lsmc_default_theme: Literal["original", "lsmc", "light", "nosee", "tacky"]
+report_context_file: Optional[str]
+report_style_file: Optional[str]
+report_display_file: Optional[str]
+report_links: Optional[Dict]
 lsmc_service: str
 lsmc_environment: str
 lsmc_allow_tacky: bool
@@ -527,6 +531,16 @@ def _add_config(conf: Dict, conf_path=None):
             log_filename_clean_extensions.append(v)
         elif c == "extra_fn_clean_trim":
             log_filename_clean_trimmings.append(v)
+        elif c in {"report_context_file", "report_style_file", "report_display_file"} and v:
+            fpath = Path(v)
+            if not fpath.is_absolute():
+                fpath = (Path(conf_path).resolve().parent if conf_path else Path.cwd()) / fpath
+            if not fpath.is_file():
+                raise ValueError(f"Config '{c}' path not found: {fpath}")
+            update({c: str(fpath.resolve())})
+            log_new_config[c] = str(fpath.resolve())
+        elif c == "lsmc_default_theme" and v not in {"original", "lsmc", "light", "nosee", "tacky"}:
+            raise ValueError(f"Invalid lsmc_default_theme {v!r}; Dark has been removed")
         elif c == "dayoa_report_selectors" and v:
             # The selector manifest controls report identity and modality filtering.
             # A configured but missing file must stop report generation rather than

@@ -11,12 +11,13 @@ test("the untouched original theme keeps the upstream table stacking contract", 
   assert.match(originalCss, /\.bar\s*\{[\s\S]*?z-index:\s*-1;/);
 });
 
-test("all five branded themes place table values above opaque data bars", () => {
+test("all four retained branded themes place table values above opaque data bars", () => {
   assert.match(lsmcCss, /html\[data-theme\]:not\(\[data-theme="original"\]\)\s*\{/);
   assert.match(lsmcCss, /\.mqc_table \.wrapper\s*\{\s*z-index:\s*0;/);
   assert.match(lsmcCss, /\.mqc_table tbody tr td \.wrapper \.val\s*\{[\s\S]*?z-index:\s*1;/);
   assert.match(lsmcCss, /\.mqc_table \.bar\s*\{\s*z-index:\s*0;/);
-  for (const theme of ["lsmc", "dark", "light", "nosee", "tacky"]) {
+  assert.doesNotMatch(lsmcCss, /html\[data-theme="dark"\]/);
+  for (const theme of ["lsmc", "light", "nosee", "tacky"]) {
     assert.match(lsmcCss, new RegExp(`html\\[data-theme="${theme}"\\]`));
   }
 });

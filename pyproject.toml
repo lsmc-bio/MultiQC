@@ -6,6 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "multiqc"
 version = "1.36dev"
 dependencies = [
+    "bleach>=6.2",
+    "beautifulsoup4>=4.12",
     "boto3",              # for aws bedrock ai support
     "click",
     "humanize",
@@ -103,6 +105,7 @@ Changelog = "https://github.com/MultiQC/MultiQC/blob/main/CHANGELOG.md"
 
 [project.entry-points.console_scripts]
 multiqc = "multiqc.__main__:run_multiqc"
+multiqc-presentation = "multiqc.core.presentation:main"
 
 [project.entry-points."multiqc.modules.v1"]
 custom_content = "multiqc.core.special_case_modules.custom_content:custom_module_classes"  # special case
@@ -296,6 +299,7 @@ xenome = "multiqc.modules.xenome:MultiqcModule"
 
 [project.entry-points."multiqc.templates.v1"]
 default = "multiqc.templates.default"
+lsmc-paginated = "multiqc.templates.lsmc_paginated"
 original = "multiqc.templates.original"
 sections = "multiqc.templates.sections"
 simple = "multiqc.templates.simple"

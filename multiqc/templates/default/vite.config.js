@@ -1,15 +1,18 @@
 import { resolve } from "path";
+const indexBuild = process.env.MQC_INDEX_BUILD === "1";
 
 export default {
   root: resolve(__dirname, "src"),
   build: {
     outDir: "../compiled",
+    emptyOutDir: !indexBuild,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "src/js/main.js"),
+        main: resolve(__dirname, indexBuild ? "src/js/bundle-index.js" : "src/js/main.js"),
       },
       output: {
-        entryFileNames: "js/multiqc.min.js",
+        format: "iife",
+        entryFileNames: indexBuild ? "js/bundle-index.js" : "js/multiqc.min.js",
         assetFileNames: "css/multiqc.min.css",
       },
     },

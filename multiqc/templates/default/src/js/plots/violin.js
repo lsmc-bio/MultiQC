@@ -399,6 +399,11 @@ class ViolinPlot extends Plot {
   }
 
   exportData(format) {
+    if (window.MQCBundle) {
+      const table = window.MQCPaginatedTables.get(this.datasets[this.activeDatasetIdx].dt.anchor);
+      if (!table) throw new Error(`Missing full-data table export model for ${this.anchor}`);
+      return table.csv(format);
+    }
     let [
       metrics,
       headerByMetric,

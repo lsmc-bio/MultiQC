@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-theme="{{ config.lsmc_default_theme }}" data-bs-theme="dark" data-lsmc-service="{{ config.lsmc_service | e }}">
+<head>
+<script>
+window.addEventListener('error', function(event) {
+  const resource = event.target && (event.target.src || event.target.href);
+  const message = resource ? 'Required report resource failed to load: ' + resource : event.message;
+  if (!message) return;
+  const show = function() { const box = document.getElementById('report-presentation-error'); if (box) { box.hidden = false; box.textContent = message; } };
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', show); else show();
+}, true);
+</script>
+{% include 'head.html' %}
+<script>window.MQCBundle={{ bundle | tojson }};window.callAfterDecompressed=[];</script>
+{% for css in deps.css %}<link rel="stylesheet" href="{{ css | e }}">{% endfor %}
+<style>
+@font-face{font-family:"Nunito Sans";src:url("{{ asset_root }}/NunitoSans-LSMC.woff2");font-display:swap}
+@font-face{font-family:"Source Serif 4";src:url("{{ asset_root }}/SourceSerif4-LSMC.woff2");font-display:swap}
+</style>
+{% for js in deps.js %}<script src="{{ js | e }}"></script>{% endfor %}
+</head>
+<body>
+<aside class="side-nav-wrapper sticky-top"><div class="side-nav">
+  <h1 class="side-nav-title"><a href="{{ bundle.entry | e }}" data-bundle-nav>Report index</a></h1>
+  {% include 'theme_toggle.html' %}
+  <ul class="mqc-nav">
+  {% for item in navigation %}<li><a href="{{ item.href | e }}" data-bundle-nav class="nav-l1">{{ item.title | e }}</a></li>{% endfor %}
+  </ul>
+</div></aside>
+{% if not index %}{% include 'toolbox.html' %}{% endif %}
+<main class="mainpage"><div class="p-4 pe-5">
+{% include 'header.html' %}
+{% include 'presentation.html' %}
+{% if bundle.identities.analysis_unit %}{% include 'dayoa_selectors.html' %}{% endif %}
+{% if index %}
+<section id="report-contents"><h2>Report contents</h2>
+<p>{{ bundle.identities.analysis_unit | length }} analysis units; {{ navigation | length }} report sections. Open a section to load its plots and tables.</p>
+<ol>{% for item in navigation %}<li><a href="{{ item.href | e }}" data-bundle-nav>{{ item.title | e }}</a></li>{% endfor %}</ol>
+</section>
+{% else %}{{ content }}{% endif %}
+</div><footer class="footer border-top py-3 mt-5">{% include 'footer.html' %}</footer></main>
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
+<div class="toast d-none" id="toast-template" role="alert"><div class="toast-header"><span class="toast-icon"></span><strong class="toast-heading"></strong></div><div class="toast-body"></div></div>
+{% if not index %}{% include 'foot.html' %}{% endif %}
+</body></html>

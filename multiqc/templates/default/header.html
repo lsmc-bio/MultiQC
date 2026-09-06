@@ -9,7 +9,7 @@ was generated and the button that launches the welcome tour.
 #}
 
 <h1 id="page_title" class="mb-3">
-  {% if config.custom_logo is not none %}
+  {% if config.custom_logo is not none and report.presentation is not defined %}
     <div class="float-end">
       {{ '<a href="'+config.custom_logo_url+'" target="_blank">' if config.custom_logo_url is not none }}
       <img
@@ -32,12 +32,12 @@ was generated and the button that launches the welcome tour.
   <div class="lsmc-native-brand" aria-label="LSMC evidence review">
     <span class="lsmc-report-kicker">Evidence review</span>
     <img
-      src="data:image/png;base64,{{ include_file('assets/img/lsmc-compact-black-transparent.png', b64=True) }}"
+      src="{{ report.presentation.style.brand.logo | e }}"
       class="lsmc-native-logo lsmc-native-logo-on-light"
       alt="LSMC"
     />
     <img
-      src="data:image/png;base64,{{ include_file('assets/img/lsmc-compact-white-transparent.png', b64=True) }}"
+      src="{{ report.presentation.style.brand.logo_dark | e }}"
       class="lsmc-native-logo lsmc-native-logo-on-dark"
       alt="LSMC"
     />

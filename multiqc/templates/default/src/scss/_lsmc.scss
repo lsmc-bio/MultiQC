@@ -1,6 +1,6 @@
 /* LSMC evidence-review presentation. Original remains on upstream styles. */
 
-$lsmc-themes: "lsmc", "dark", "light", "nosee", "tacky";
+$lsmc-themes: "lsmc", "light", "nosee", "tacky";
 
 html[data-theme="lsmc"] {
   --ui-bg: #242732;
@@ -11,23 +11,6 @@ html[data-theme="lsmc"] {
   --ui-muted: #b9bfcb;
   --ui-border: #697084;
   --ui-accent: #f8a721;
-  --ui-accent-2: #9fafc2;
-  --ui-info: #9fafc2;
-  --ui-ok: #13bab6;
-  --ui-warn: #ffc655;
-  --ui-danger: #ff3722;
-  --ui-decision: #c89be0;
-}
-
-html[data-theme="dark"] {
-  --ui-bg: #15171d;
-  --ui-surface: #242732;
-  --ui-surface-2: #303441;
-  --ui-surface-3: #363844;
-  --ui-text: #f5f1e8;
-  --ui-muted: #b8bfca;
-  --ui-border: #697084;
-  --ui-accent: #ffc655;
   --ui-accent-2: #9fafc2;
   --ui-info: #9fafc2;
   --ui-ok: #13bab6;
@@ -187,7 +170,14 @@ html[data-theme="tacky"] {
 }
 
 .lsmc-native-brand {
-  display: none;
+  display: flex;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+#mqc-presentation-logo {
+  height: auto;
+  max-width: 100%;
 }
 
 html[data-theme]:not([data-theme="original"]) {
@@ -241,7 +231,6 @@ html[data-theme]:not([data-theme="original"]) {
 }
 
 html[data-theme="lsmc"]:not([data-theme="original"]) .lsmc-native-logo-on-dark,
-html[data-theme="dark"]:not([data-theme="original"]) .lsmc-native-logo-on-dark,
 html[data-theme="light"]:not([data-theme="original"]) .lsmc-native-logo-on-light,
 html[data-theme="nosee"]:not([data-theme="original"]) .lsmc-native-logo-on-light,
 html[data-theme="tacky"]:not([data-theme="original"]) .lsmc-native-logo-on-light {

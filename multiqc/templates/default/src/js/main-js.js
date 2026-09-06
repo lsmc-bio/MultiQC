@@ -17,6 +17,9 @@ import "./statuses.js";
 
 // Color mode toggle functionality
 import "./color-mode.js";
+import "./presentation.js";
+import "./precision.js";
+import "./paginated.js";
 import "./dayoa-selectors.js";
 
 // Toolbox modules

@@ -196,9 +196,15 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
 
   if (typeof document === "undefined") return;
   const manifestElement = document.getElementById("dayoa_report_selectors");
-  if (!manifestElement) return;
+  if (!manifestElement && !window.MQCBundle?.identities.analysis_unit.length) return;
 
-  const manifest = validateDayoaSelectorManifest(JSON.parse(manifestElement.textContent));
+  const manifest = window.MQCBundle
+    ? { ...window.MQCPageData.selectors, selector_records: window.MQCPageData.selectors.records.filter((r) => r.selector_eligible) }
+    : validateDayoaSelectorManifest(JSON.parse(manifestElement.textContent));
+  if (window.MQCBundle) Object.values(manifest.plot_groupings).forEach((dimensions) => dimensions.forEach((dimension) => dimension.groups.forEach((group) => {
+    group.members = manifest.memberships[group.members_ref];
+    delete group.members_ref;
+  })));
   const knownAnalysisIds = manifest.records.map((record) => record.MultiQCAnalysisID);
   const plotGroupings = validateDayoaPlotGroupings(manifest.plot_groupings, knownAnalysisIds);
 
@@ -211,7 +217,7 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   };
   const availableIdentities = Object.fromEntries(
     Object.keys(dayoaSelectorDimensions).map((dimension) => {
-      const keys = dayoaSelectorIdentityKeys(manifest.selector_records, dimension);
+      const keys = window.MQCBundle ? window.MQCBundle.identities[dimension] : dayoaSelectorIdentityKeys(manifest.selector_records, dimension);
       return [dimension, keys.sort((left, right) => identityLabel(left).localeCompare(identityLabel(right)))];
     }),
   );
@@ -227,6 +233,15 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
         Object.entries(state.excluded).map(([dimension, values]) => [dimension, [...values]]),
       ),
     };
+    if (window.MQCBundle) {
+      window.MQCBundle.state = serialized;
+      document.querySelectorAll("a[data-bundle-nav]").forEach((a) => {
+        const original = a.dataset.bundleHref || a.getAttribute("href");
+        a.dataset.bundleHref = original;
+        a.href = original.split("#")[0] + "#mqc-state=" + encodeURIComponent(JSON.stringify(serialized));
+      });
+      history.replaceState(null, "", location.pathname + location.search + "#mqc-state=" + encodeURIComponent(JSON.stringify(serialized)));
+    }
     try {
       localStorage.setItem(storageKey, JSON.stringify(serialized));
     } catch (_error) {
@@ -237,7 +252,8 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   const restoreState = () => {
     let saved = null;
     try {
-      saved = JSON.parse(localStorage.getItem(storageKey));
+      const fragment = window.MQCBundle && location.hash.startsWith("#mqc-state=") ? decodeURIComponent(location.hash.slice(11)) : null;
+      saved = JSON.parse(fragment || localStorage.getItem(storageKey));
     } catch (_error) {
       return;
     }
@@ -282,7 +298,9 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
     const includedCount = Object.values(state.included).reduce((total, values) => total + values.size, 0);
     const excludedCount = Object.values(state.excluded).reduce((total, values) => total + values.size, 0);
     if (status)
-      status.textContent = `Showing ${visible} of ${manifest.records.length} report records. ${includedCount} included, ${excludedCount} excluded.`;
+      status.textContent = window.MQCBundle?.is_index
+        ? `Selections apply across all sections. ${includedCount} included, ${excludedCount} excluded.`
+        : `Showing ${visible} of ${manifest.records.length} section records. ${includedCount} included, ${excludedCount} excluded.`;
     saveState();
   };
 

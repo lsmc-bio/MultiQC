@@ -116,9 +116,33 @@ template: default
 
 Enable the dark mode toggle in the report template.
 
+#### `report_context_file`
+
+**Type**: <code>str</code>
+
+Path to runtime introduction configuration.
+
+#### `report_style_file`
+
+**Type**: <code>str</code>
+
+Path to external presentation and branding configuration.
+
+#### `report_display_file`
+
+**Type**: <code>str</code>
+
+Path to display-only significant-digit settings and per-field overrides.
+
+#### `report_links`
+
+**Type**: <code>Dict[str, Any]</code>
+
+Ordered report-local and external links, with title and items.
+
 #### `lsmc_default_theme`
 
-**Type**: <code>Literal["original", "lsmc", "dark", "light", "nosee", "tacky"]</code> (default: `"lsmc"`)
+**Type**: <code>Literal["original", "lsmc", "light", "nosee", "tacky"]</code> (default: `"lsmc"`)
 
 Initial LSMC report theme. The original theme preserves the upstream MultiQC presentation.
 
@@ -1656,12 +1680,18 @@ snakemake_benchmarks/combined:
   - fn: benchmarks.tsv
   - fn: benchmarks_summary.tsv
   - fn: rules_benchmark_data_mqc.tsv
+snakemake_samples/specimens:
+  fn: specimens.tsv
 snakemake_samples/samples:
-  - fn: samples.tsv
-  - fn: input_samples_mqc.tsv
-snakemake_samples/units:
-  - fn: units.tsv
-  - fn: input_units_mqc.tsv
+  fn: samples.tsv
+snakemake_samples/libraries:
+  fn: libraries.tsv
+snakemake_samples/sequencing_inputs:
+  fn: sequencing_inputs.tsv
+snakemake_samples/analysis_units:
+  fn: analysis_units.tsv
+snakemake_samples/analysis_unit_inputs:
+  fn: analysis_unit_inputs.tsv
 snakemake_samples/gender_checks:
   fn: reported_vs_inferred_sex_check_mqc.tsv
 snakemake_samples/hybrid_qc:
@@ -1838,6 +1868,10 @@ gffcompare:
   fn: "*.stats"
   contents: "# gffcompare"
   num_lines: 2
+giabconcordance/rtg:
+  fn: giab_concordance_mqc.tsv
+giabconcordance/jasmine_le50:
+  fn: sentdhiomr2_jasmine_le50_rtg_mqc.tsv
 glimpse/err_spl:
   fn: "*.error.spl.txt.gz"
   num_lines: 1
@@ -2571,6 +2605,11 @@ truvari/bench:
   contents_re: .*truvari.* bench.*
   fn: log.txt
   num_lines: 10
+truvari/dayoa_aggregate:
+  fn: sentdhiomr2_truvari_mqc.tsv
+  contents: "Sample\tSampleID\tAnalysisUnitUID\tentity_scope\tdeclared_grain\ttool\t\
+    tool_code\tquery\tstatus\tTP-base\tTP-comp\tFP\tFN\tprecision\trecall\tf1\tprojected_records\t\
+    excluded_records"
 umicollapse:
   num_lines: 100
   contents: "UMI collapsing finished in "
@@ -2589,6 +2628,8 @@ varscan2/mpileup2indel:
 varscan2/mpileup2cns:
   contents: Only variants will be reported
   num_lines: 10
+vcf_sv_stats:
+  fn: "*.vcf-sv-stats.json"
 vcftools/relatedness2:
   fn: "*.relatedness2"
 vcftools/tstv_by_count:
