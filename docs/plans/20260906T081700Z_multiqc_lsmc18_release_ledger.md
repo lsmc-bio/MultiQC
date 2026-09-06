@@ -27,9 +27,9 @@ publication, report-data publication or cluster changes.
 | ID | Area | Requirement | Status | Category | Gate | Owner | Evidence | Root cause | Terminal note |
 |---|---|---|---|---|---|---|---|---|---|
 | REL-01 | Source | Commit/push release documentation and PR | SUCCESS | feature_implementation | user release request | primary | PR https://github.com/lsmc-bio/MultiQC/pull/13 | | Release branch and notes pushed |
-| REL-02 | Merge | Observe checks and merge PR normally | ATTEMPTING_BUGFIX | feature_implementation | repository policy | primary | Initial CodeQL gate failed on client-side regex HTML stripping | Incomplete multi-character sanitization in clipboard unit formatting | |
-| REL-03 | Tag | Annotated immutable 1.36.dev0-lsmc.18 on clean merged commit | OPEN | feature_implementation | user version selection | primary | Pending | | |
-| REL-04 | GitHub | Publish detailed tagged release and return URL | OPEN | feature_implementation | user release request | primary | Pending | | |
+| REL-02 | Merge | Observe checks and merge PR normally | SUCCESS | feature_implementation | repository policy | primary | All three checks passed on 37bc1f84c; PR 13 merged 2026-09-06T08:23:30Z | Initial regex stripping alert corrected | Normal merge within lsmc-bio only, no bypass |
+| REL-03 | Tag | Annotated immutable 1.36.dev0-lsmc.18 on clean merged commit | SUCCESS | feature_implementation | user version selection | primary | Local and remote peeled commit 400f3de84aa4470f8c36bbd76c037d9f9e9176e1 | | Annotated tag verified and pushed |
+| REL-04 | GitHub | Publish detailed tagged release and return URL | SUCCESS | feature_implementation | user release request | primary | Published 2026-09-06T08:23:51Z; URL below | | Published release, not draft; no report data attached |
 
 Full original development-plan acceptance remains separate from this approved
 source-release objective. Release notes:
@@ -42,4 +42,26 @@ with parser-based plain-text extraction in the generated clipboard row model;
 the client now consumes that text without HTML stripping. Raw numeric values,
 precise scientific exports and native table HTML are unchanged. Added a focused
 regression case; no local tests were executed. Rebuilt frontend assets and
-will require the automatic GitHub check to clear without suppression or bypass.
+required the automatic GitHub check to clear without suppression or bypass.
+
+## Terminal release receipt
+
+- All four release rows are terminal SUCCESS. Approved source-release objective
+  complete; original broader development acceptance and DayOA adoption remain
+  separate and incomplete as documented in the release notes.
+- PR: https://github.com/lsmc-bio/MultiQC/pull/13.
+- Both PR base and head repositories verified as `lsmc-bio/MultiQC`. No request
+  or mutation was made to upstream `MultiQC/MultiQC`.
+- Corrective source commit: `37bc1f84c5b12e5e4f31f099dd691b9a5a45512e`.
+- GitHub run `34021630092`: JavaScript/TypeScript analysis SUCCESS (81s), Python
+  analysis SUCCESS (52s); CodeQL security gate `101455265523` SUCCESS (3s).
+- Clean merged release commit: `400f3de84aa4470f8c36bbd76c037d9f9e9176e1`.
+  Local main was fast-forwarded to this exact commit before tagging.
+- Tag `1.36.dev0-lsmc.18`, annotated object
+  `5d42b6d8f9aabb728d7c10009798016d31db3136`. Remote tag and peeled commit match.
+- Release: https://github.com/lsmc-bio/MultiQC/releases/tag/1.36.dev0-lsmc.18.
+  Published, not draft, not prerelease, designated latest. Detailed notes
+  supplied from the committed release-notes file. No customer report assets.
+- Final receipt is recorded after publication on a documentation-only audit
+  branch, `codex/lsmc18-release-receipt-20260906`; it does not move the tag or
+  change release code. No PyPI upload, production pin update or cluster action.
