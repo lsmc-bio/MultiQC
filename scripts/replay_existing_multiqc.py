@@ -129,7 +129,7 @@ def main():
     before = time.monotonic()
     with (out / "render.log").open("w") as log:
         result = subprocess.run(
-            command, cwd=source, env={**os.environ, **presentation_env}, stdout=log, stderr=subprocess.STDOUT
+            command, cwd=source, env={**os.environ, **presentation_env}, stdout=log, stderr=subprocess.STDOUT, check=False
         )
     elapsed = time.monotonic() - before
     final = {str(path): digest(path) for path in [original, selectors, *configs]}
