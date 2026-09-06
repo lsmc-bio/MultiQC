@@ -1008,6 +1008,25 @@
       "section": "Report Appearance",
       "title": "Report Links"
     },
+    "report_groups": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Groups"
+    },
     "lsmc_default_theme": {
       "anyOf": [
         {

@@ -2342,6 +2342,16 @@
                                 "items_enum": null,
                                 "examples": []
                         },
+                        "report_groups": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "array",
+                                "description": "Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
                         "lsmc_default_theme": {
                                 "deprecated": false,
                                 "multiline": false,
@@ -7945,6 +7955,25 @@
       "group": "Template",
       "section": "Report Appearance",
       "title": "Report Links"
+    },
+    "report_groups": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Groups"
     },
     "lsmc_default_theme": {
       "anyOf": [

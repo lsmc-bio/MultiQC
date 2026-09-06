@@ -89,6 +89,83 @@ def extract_tables(content: str):
     return str(soup), tables
 
 
+def group_pages(sections, groups):
+    """Compose native outputs into strict, ordered groups without dropping sections."""
+    if groups is None:
+        return [{**s, "outputs": [{"anchor": s["anchor"], "title": s["title"]}], "description": ""} for s in sections]
+    if not isinstance(groups, list) or not groups:
+        raise ValueError("report_groups must be a non-empty list")
+    by_anchor = {s["anchor"]: s for s in sections}
+    if len(by_anchor) != len(sections):
+        raise ValueError("Report has duplicate section anchors; cannot group unambiguously")
+    module_ids = {str(m.anchor) for s in sections for m in s["modules"]}
+    assigned, group_ids, pages = set(), set(), []
+    for group in groups:
+        if not isinstance(group, dict) or set(group) - {"id", "title", "description", "modules", "sections"}:
+            raise ValueError("report_groups entries support only id, title, description, modules and sections")
+        gid, title = group.get("id"), group.get("title")
+        if not isinstance(gid, str) or not re.fullmatch(r"[a-z][a-z0-9_-]*", gid) or gid == "index":
+            raise ValueError("Report group id must be a lowercase slug other than index")
+        if gid in group_ids:
+            raise ValueError(f"Duplicate report group id: {gid}")
+        group_ids.add(gid)
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError(f"Report group {gid} requires a non-empty title")
+        description = group.get("description", "")
+        if not isinstance(description, str):
+            raise TypeError(f"Report group {gid} description must be text")
+        chosen = set()
+        for key, available in (("modules", module_ids), ("sections", set(by_anchor))):
+            requested = group.get(key, [])
+            if not isinstance(requested, list) or any(not isinstance(value, str) for value in requested):
+                raise ValueError(f"Report group {gid} {key} must be a list of exact anchors")
+            if len(set(requested)) != len(requested):
+                raise ValueError(f"Duplicate {key} selectors in report group {gid}")
+            missing = set(requested) - available
+            if missing:
+                raise ValueError(f"Unknown {key} in report group {gid}: {sorted(missing)}")
+            for selector in requested:
+                matches = {
+                    s["anchor"]
+                    for s in sections
+                    if (
+                        s["anchor"] == selector
+                        if key == "sections"
+                        else any(str(m.anchor) == selector for m in s["modules"])
+                    )
+                }
+                duplicate = matches & (chosen | assigned)
+                if duplicate:
+                    raise ValueError(f"Sections assigned more than once: {sorted(duplicate)}")
+                chosen.update(matches)
+        if not chosen:
+            raise ValueError(f"Report group {gid} has no outputs")
+        assigned.update(chosen)
+        selected = [s for s in sections if s["anchor"] in chosen]
+        # Merge each module's sections once so module wrappers and assets are not duplicated.
+        modules = {}
+        for section in selected:
+            for module in section["modules"]:
+                if module.anchor not in modules:
+                    modules[module.anchor] = copy.copy(module)
+                    modules[module.anchor].sections = []
+                modules[module.anchor].sections.extend(module.sections)
+        pages.append(
+            {
+                "anchor": gid,
+                "title": title,
+                "description": description,
+                "modules": list(modules.values()),
+                "general": any(s["general"] for s in selected),
+                "outputs": [{"anchor": s["anchor"], "title": s["title"]} for s in selected],
+            }
+        )
+    missing = set(by_anchor) - assigned
+    if missing:
+        raise ValueError(f"Sections not assigned to a report group: {sorted(missing)}")
+    return pages
+
+
 def write_paginated(report_path: Path, env, return_html=False):
     """Render native sections independently, never split an already-built report."""
     root = report_path.parent
@@ -177,6 +254,7 @@ def write_paginated(report_path: Path, env, return_html=False):
                     "general": False,
                 }
             )
+    pages = group_pages(pages, config.report_groups)
     for number, page in enumerate(pages):
         slug = re.sub(r"[^a-zA-Z0-9_-]", "_", page["anchor"])
         page["path"] = directory / "sections" / f"{number + 1:03}-{slug}.html"
@@ -186,6 +264,8 @@ def write_paginated(report_path: Path, env, return_html=False):
         "modules": [],
         "general": False,
         "path": report_path,
+        "outputs": [],
+        "description": "",
     }
     page_inventory = []
     original_cfg = SimpleNamespace(**vars(config))
@@ -201,8 +281,8 @@ def write_paginated(report_path: Path, env, return_html=False):
         content = ""
         if page["general"]:
             content = env.get_template("general_stats.html").render(report=proxy, config=page_cfg)
-        elif page["modules"]:
-            content = env.get_template("content.html").render(report=proxy, config=page_cfg)
+        if page["modules"]:
+            content += env.get_template("content.html").render(report=proxy, config=page_cfg)
         content, tables = extract_tables(content)
         parsed = BeautifulSoup(content, "html.parser")
         anchors = {element["id"] for element in parsed.select("[id]")}
@@ -236,11 +316,27 @@ def write_paginated(report_path: Path, env, return_html=False):
             + "),c=>c.charCodeAt(0)),{to:'string'}));\n",
             encoding="utf-8",
         )
-        bundle = {"id": bundle_id, "entry": url(report_path), "is_index": page is index_page, "identities": catalog}
+        bundle = {
+            "id": bundle_id,
+            "entry": url(report_path),
+            "is_index": page is index_page,
+            "identities": catalog,
+            "grouped": config.report_groups is not None,
+            "active": page["anchor"],
+        }
         proxy.plot_compressed_json = report.compress_json(plots)
         proxy.plot_data = plots
         proxy.some_plots_are_deferred = report.some_plots_are_deferred
-        nav = [{"title": p["title"], "href": url(p["path"]), "anchor": p["anchor"]} for p in pages]
+        nav = [
+            {
+                "title": p["title"],
+                "href": url(p["path"]),
+                "anchor": p["anchor"],
+                "description": p["description"],
+                "outputs": p["outputs"],
+            }
+            for p in pages
+        ]
         deps = {
             "css": [
                 url(copied["compiled/css/multiqc.min.css"]),
@@ -265,6 +361,7 @@ def write_paginated(report_path: Path, env, return_html=False):
         for module in page["modules"]:
             for kind in ("js", "css"):
                 deps[kind].extend(url(extras[str(p)]) for p in getattr(module, kind, {}).values())
+        deps = {kind: list(dict.fromkeys(paths)) for kind, paths in deps.items()}
         html = env.get_template("paginated.html").render(
             report=proxy,
             config=page_cfg,
@@ -274,12 +371,15 @@ def write_paginated(report_path: Path, env, return_html=False):
             deps=deps,
             index=page is index_page,
             asset_root=url(assets),
+            page=page,
         )
         target.write_text(html, encoding="utf-8")
         page_inventory.append(
             {
                 "path": target.relative_to(root).as_posix(),
                 "anchor": page["anchor"],
+                "title": page["title"],
+                "sections": [s["anchor"] for s in page["outputs"]],
                 "plots": sorted(plots),
                 "tables": {key: len(t["rows"]) for key, t in tables.items()},
                 "record_ids": [r["MultiQCAnalysisID"] for r in records],
@@ -292,6 +392,7 @@ def write_paginated(report_path: Path, env, return_html=False):
         "manifest_path": f"{report_path.stem}.bundle.json",
         "presentation_path": presentation_path.relative_to(root).as_posix(),
         "pages": page_inventory,
+        "report_groups": config.report_groups,
         "scientific_plot_ids": sorted(str(key) for key in report.plot_data),
         "files": [
             {"path": p.relative_to(root).as_posix()}

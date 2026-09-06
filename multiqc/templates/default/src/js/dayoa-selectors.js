@@ -1,4 +1,5 @@
 /* Exact, manifest-driven report display filtering for DayOA reports. */
+import { bundleFragment, bundleHref } from "./bundle-navigation.js";
 
 export const dayoaSelectorDimensions = {
   specimen: ["SPECIMEN_ID", "SPECIMEN_EUID"],
@@ -238,9 +239,9 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
       document.querySelectorAll("a[data-bundle-nav]").forEach((a) => {
         const original = a.dataset.bundleHref || a.getAttribute("href");
         a.dataset.bundleHref = original;
-        a.href = original.split("#")[0] + "#mqc-state=" + encodeURIComponent(JSON.stringify(serialized));
+        a.href = bundleHref(original, serialized);
       });
-      history.replaceState(null, "", location.pathname + location.search + "#mqc-state=" + encodeURIComponent(JSON.stringify(serialized)));
+      history.replaceState(null, "", bundleHref(location.pathname + location.search + location.hash, serialized));
     }
     try {
       localStorage.setItem(storageKey, JSON.stringify(serialized));
@@ -252,7 +253,7 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   const restoreState = () => {
     let saved = null;
     try {
-      const fragment = window.MQCBundle && location.hash.startsWith("#mqc-state=") ? decodeURIComponent(location.hash.slice(11)) : null;
+      const fragment = window.MQCBundle ? bundleFragment(location.hash).state : null;
       saved = JSON.parse(fragment || localStorage.getItem(storageKey));
     } catch (_error) {
       return;

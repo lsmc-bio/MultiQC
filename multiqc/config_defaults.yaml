@@ -32,6 +32,7 @@ report_context_file: null
 report_style_file: null
 report_display_file: null
 report_links: null
+report_groups: null
 lsmc_service: "qeo"
 lsmc_environment: "production"
 lsmc_allow_tacky: false

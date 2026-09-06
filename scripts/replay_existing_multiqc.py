@@ -16,6 +16,8 @@ import time
 from datetime import UTC, datetime, timezone
 from pathlib import Path
 
+import yaml
+
 
 def digest(path):
     result = hashlib.sha256()
@@ -50,6 +52,7 @@ def main():
     parser.add_argument("--candidate-commit", required=True)
     parser.add_argument("--title", required=True)
     parser.add_argument("--source-comment", required=True)
+    parser.add_argument("--groups-config", type=Path, help="Candidate-local YAML containing only report_groups")
     args = parser.parse_args()
     source = args.source_clone.resolve(strict=True)
     candidate = Path(__file__).resolve().parents[1]
@@ -68,10 +71,18 @@ def main():
     for path in [args.staged_inputs, original, selectors, *configs]:
         if not path.is_relative_to(source):
             raise ValueError(f"Input is outside the explicitly supplied source clone: {path}")
+    groups_config = args.groups_config.resolve(strict=True) if args.groups_config else None
+    if groups_config:
+        if not groups_config.is_relative_to(candidate):
+            raise ValueError("Group configuration must live in the candidate checkout")
+        groups = yaml.safe_load(groups_config.read_text())
+        if not isinstance(groups, dict) or set(groups) != {"report_groups"}:
+            raise ValueError("Group configuration must contain only report_groups")
     out.mkdir(parents=True, exist_ok=False)
     provenance = out / "provenance"
     provenance.mkdir()
-    initial = {str(path): digest(path) for path in [original, selectors, *configs]}
+    tracked_files = [original, selectors, *configs, *([groups_config] if groups_config else [])]
+    initial = {str(path): digest(path) for path in tracked_files}
     print("Hashing existing staged report inputs; no analytical execution", flush=True)
     inputs = inventory(args.staged_inputs)
     (provenance / "inputs.before.json").write_text(json.dumps(inputs, indent=2))
@@ -82,6 +93,9 @@ def main():
     command = [sys.executable, "-m", "multiqc", "--strict", "--no-version-check"]
     for path in configs:
         command.extend(["--config", str(path)])
+    if groups_config:
+        command.extend(["--config", str(groups_config)])
+        (provenance / "report-groups.yaml").write_bytes(groups_config.read_bytes())
     for setting in [
         f"dayoa_report_selectors: {json.dumps(str(selectors))}",
         "lsmc_default_theme: lsmc",
@@ -149,7 +163,7 @@ def main():
             check=False,
         )
     elapsed = time.monotonic() - before
-    final = {str(path): digest(path) for path in [original, selectors, *configs]}
+    final = {str(path): digest(path) for path in tracked_files}
     after_inputs = inventory(args.staged_inputs)
     (provenance / "inputs.after.json").write_text(json.dumps(after_inputs, indent=2))
     unchanged = initial == final and inputs == after_inputs

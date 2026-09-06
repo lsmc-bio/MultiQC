@@ -140,6 +140,12 @@ Path to display-only significant-digit settings and per-field overrides.
 
 Ordered report-local and external links, with title and items.
 
+#### `report_groups`
+
+**Type**: <code>List[Dict[str, Any]]</code>
+
+Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.
+
 #### `lsmc_default_theme`
 
 **Type**: <code>Literal["original", "lsmc", "light", "nosee", "tacky"]</code> (default: `"lsmc"`)

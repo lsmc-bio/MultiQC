@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from bs4 import BeautifulSoup
@@ -11,6 +12,7 @@ from click.testing import CliRunner
 
 import multiqc
 from multiqc import config
+from multiqc.core.paginated import group_pages
 from multiqc.core.presentation import load_presentation, main, safe_url
 from multiqc.core.update_config import ClConfig
 
@@ -170,3 +172,91 @@ def test_display_precision_is_separate_from_science(monkeypatch):
     monkeypatch.setenv("MULTIQC_REPORT_DISPLAY", '{"significant_digits":6,"fields":{"table/coverage":8}}')
     payload = load_presentation()
     assert payload["display"] == {"significant_digits": 6, "fields": {"table/coverage": 8}}
+
+
+@pytest.fixture
+def sections():
+    return [
+        {"anchor": "general_stats", "title": "General Statistics", "modules": [], "general": True},
+        *[
+            {
+                "anchor": name,
+                "title": name,
+                "modules": [SimpleNamespace(anchor="tool", sections=[name])],
+                "general": False,
+            }
+            for name in ["first", "second"]
+        ],
+    ]
+
+
+def test_group_modules_once_with_general_stats(sections):
+    pages = group_pages(sections, [{"id": "qc", "title": "QC", "modules": ["tool"], "sections": ["general_stats"]}])
+    assert len(pages) == 1
+    assert pages[0]["general"]
+    assert len(pages[0]["modules"]) == 1
+    assert pages[0]["modules"][0].sections == ["first", "second"]
+    assert sections[1]["modules"][0].sections == ["first"]
+    assert [s["anchor"] for s in pages[0]["outputs"]] == ["general_stats", "first", "second"]
+
+
+@pytest.mark.parametrize(
+    "groups, error",
+    [
+        ([], "non-empty"),
+        ([{"id": "bad/path", "title": "Bad"}], "slug"),
+        ([{"id": "qc", "title": "QC", "modules": ["typo"]}], "Unknown modules"),
+        ([{"id": "qc", "title": "QC", "sections": ["typo"]}], "Unknown sections"),
+        ([{"id": "qc", "title": "QC", "sections": ["first", "first"]}], "Duplicate"),
+        ([{"id": "qc", "title": "QC", "modules": ["tool"], "sections": ["first"]}], "more than once"),
+        ([{"id": "qc", "title": "QC", "modules": ["tool"]}], "not assigned"),
+        ([{"id": "qc", "title": "QC"}], "no outputs"),
+        ([{"id": "qc", "title": "QC", "section": ["first"]}], "support only"),
+        ([{"id": "qc", "title": "QC", "sections": "first"}], "list of exact"),
+        (
+            [{"id": "qc", "title": "QC", "sections": ["first"]}, {"id": "qc", "title": "QC", "sections": ["second"]}],
+            "Duplicate report group",
+        ),
+        (
+            [
+                {"id": "qc", "title": "QC", "sections": ["first"]},
+                {"id": "other", "title": "Other", "sections": ["first"]},
+            ],
+            "more than once",
+        ),
+    ],
+)
+def test_invalid_groups_fail_closed(sections, groups, error):
+    with pytest.raises(ValueError, match=error):
+        group_pages(sections, groups)
+
+
+def test_grouped_render_retains_complete_table_models_and_plot_ids(bundle):
+    root, previous = bundle
+    sections = [p["anchor"] for p in previous["pages"] if p["anchor"] != "index"]
+    settings = root.parent / "groups.yaml"
+    settings.write_text(json.dumps({"report_groups": [{"id": "all_qc", "title": "All QC", "sections": sections}]}))
+    output = root.parent / "grouped"
+    result = multiqc.run(
+        root.parent / "inputs",
+        cfg=ClConfig(template="lsmc-paginated", output_dir=str(output), no_ai=True, config_files=[str(settings)]),
+    )
+    assert result.sys_exit_code == 0
+    manifest = json.loads((output / "multiqc_report.bundle.json").read_text())
+    assert len(manifest["pages"]) == 2
+    assert manifest["pages"][1]["sections"] == sections
+    assert manifest["scientific_plot_ids"] == previous["scientific_plot_ids"]
+    assert manifest["pages"][1]["plots"] == previous["scientific_plot_ids"]
+    page = BeautifulSoup((output / manifest["pages"][1]["path"]).read_text(), "html.parser")
+    assert len(page.select('.mqc-group-tabs a[aria-current="page"]')) == 1
+    assert page.select_one('.mqc-group-tabs a[aria-current="page"]').text == "All QC"
+    assert not page.select("table[data-paginated-table] tbody tr")
+
+    def tables(base, inventory):
+        found = {}
+        for item in inventory["files"]:
+            if "/data/" in item["path"]:
+                found.update(page_data(base / item["path"])["tables"])
+        return found
+
+    assert tables(output, manifest) == tables(root, previous)

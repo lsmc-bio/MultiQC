@@ -23,19 +23,48 @@ window.addEventListener('error', function(event) {
 <aside class="side-nav-wrapper sticky-top"><div class="side-nav">
   <h1 class="side-nav-title"><a href="{{ bundle.entry | e }}" data-bundle-nav>Report index</a></h1>
   {% include 'theme_toggle.html' %}
+  {% if bundle.grouped %}
+  <p class="mx-3 mt-3">{% if index %}Pipeline stages{% else %}On this tab{% endif %}</p>
+  <ul class="mqc-nav">
+  {% if index %}
+  {% for item in navigation %}<li><a href="{{ item.href | e }}" data-bundle-nav class="nav-l1">{{ item.title | e }}</a></li>{% endfor %}
+  {% else %}
+  {% for output in page.outputs %}<li><a href="#{{ output.anchor | e }}" class="nav-l1">{{ output.title | e }}</a></li>{% endfor %}
+  {% endif %}
+  </ul>
+  {% else %}
   <ul class="mqc-nav">
   {% for item in navigation %}<li><a href="{{ item.href | e }}" data-bundle-nav class="nav-l1">{{ item.title | e }}</a></li>{% endfor %}
   </ul>
+  {% endif %}
 </div></aside>
 {% if not index %}{% include 'toolbox.html' %}{% endif %}
 <main class="mainpage"><div class="p-4 pe-5">
+{% if bundle.grouped %}
+<nav class="mqc-group-tabs" aria-label="Pipeline stage tabs">
+<a href="{{ bundle.entry | e }}" data-bundle-nav {% if index %}aria-current="page"{% endif %}>Overview</a>
+{% for item in navigation %}<a href="{{ item.href | e }}" data-bundle-nav {% if bundle.active == item.anchor %}aria-current="page"{% endif %}>{{ item.title | e }}</a>{% endfor %}
+</nav>
+{% if not index %}<h1 class="mqc-group-title">{{ page.title | e }}</h1><p>{{ page.description | e }}</p>
+<details class="mqc-group-context"><summary>Report context and provenance</summary>{% endif %}
+{% endif %}
 {% include 'header.html' %}
 {% include 'presentation.html' %}
+{% if bundle.grouped and not index %}</details>{% endif %}
 {% if bundle.identities.analysis_unit %}{% include 'dayoa_selectors.html' %}{% endif %}
 {% if index %}
 <section id="report-contents"><h2>Report contents</h2>
+{% if bundle.grouped %}
+<p>{{ bundle.identities.analysis_unit | length }} analysis units; {{ navigation | length }} pipeline-stage tabs. Only the selected tab loads its tool outputs.</p>
+<div class="mqc-group-cards">{% for item in navigation %}
+<article><h3><a href="{{ item.href | e }}" data-bundle-nav>{{ loop.index }}. {{ item.title | e }}</a></h3>
+<p>{{ item.description | e }}</p><details><summary>{{ item.outputs | length }} outputs</summary>
+<ul>{% for output in item.outputs %}<li><a href="{{ item.href | e }}#{{ output.anchor | e }}" data-bundle-nav>{{ output.title | e }}</a></li>{% endfor %}</ul>
+</details></article>{% endfor %}</div>
+{% else %}
 <p>{{ bundle.identities.analysis_unit | length }} analysis units; {{ navigation | length }} report sections. Open a section to load its plots and tables.</p>
 <ol>{% for item in navigation %}<li><a href="{{ item.href | e }}" data-bundle-nav>{{ item.title | e }}</a></li>{% endfor %}</ol>
+{% endif %}
 </section>
 {% else %}{{ content }}{% endif %}
 </div><footer class="footer border-top py-3 mt-5">{% include 'footer.html' %}</footer></main>

@@ -83,6 +83,7 @@ report_context_file: Optional[str]
 report_style_file: Optional[str]
 report_display_file: Optional[str]
 report_links: Optional[Dict]
+report_groups: Optional[List[Dict]]
 lsmc_service: str
 lsmc_environment: str
 lsmc_allow_tacky: bool

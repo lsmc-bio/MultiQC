@@ -1,0 +1,149 @@
+# Exact visible section anchors from the existing ILMN-14 48-AU draft02.
+# This configuration changes presentation only, never scientific output values.
+report_groups:
+  - id: raw_reads
+    title: Raw Reads
+    description: Input read yield, lengths, qualities, composition and adapter checks.
+    sections:
+      - hiomr2_lr_input_qc
+      - seqfu
+      - fastqc_sequence_counts
+      - fastqc_per_base_sequence_quality
+      - fastqc_per_sequence_quality_scores
+      - fastqc_per_base_sequence_content
+      - fastqc_per_sequence_gc_content
+      - fastqc_per_base_n_content
+      - fastqc_sequence_length_distribution
+      - fastqc_sequence_duplication_levels
+      - fastqc_overrepresented_sequences
+      - fastqc_top_overrepresented_sequences
+      - fastqc_adapter_content
+      - fastqc_status_checks
+      - sequence_qc_outputs
+  - id: alignment
+    title: Alignment
+    description: Mapping, insert sizes, read fate and complete alignment metrics.
+    sections:
+      - ont_alignment_qc
+      - samtools-stats-alignment
+      - samtools-stats-insert-size
+      - samtools-stats
+      - samtools-flagstat
+      - samtools-flagstat-pct
+      - samtools-idxstats-xy-counts
+      - samtools-idxstats
+      - alignment_qc_outputs
+      - alignstats-read-fate
+      - alignstats-wgs-coverage
+      - alignstats-statistic-families
+      - alignstats-all-metrics
+  - id: coverage
+    title: Coverage
+    description: Coverage depth, evenness, chromosome distribution and index-based checks.
+    sections:
+      - coverage_evenness_two_combo
+      - norm_cov_evenness_combo
+      - mosdepth-cumcoverage-dist
+      - mosdepth-coverage-per-contig-section
+      - goleft_indexcov-roc
+      - goleft_indexcov-bin
+  - id: snvs_indels
+    title: SNVs & Indels
+    description: Small-variant and gVCF summaries, variant types, quality, depth and indels.
+    sections:
+      - sentdhiomr2_gvcf
+      - rtg_vcfstats
+      - bcftools_variant_stats
+      - bcftools-stats_variant_sub_types
+      - bcftools-stats_variant_quality_plot
+      - bcftools-stats_indel_plot
+      - bcftools-stats_depth_plot
+  - id: svs_cnvs
+    title: SVs & CNVs
+    description: Structural and copy-number calls, caller summaries and merged SV evidence.
+    sections:
+      - sentdhiomr2_cnvscope
+      - sentdhiomr2_longreadsv
+      - sentdhiomr2_segdup
+      - sentdhiomr2_sniffles2
+      - sentdhiomr2_tiddit
+      - vcf-sv-stats-overview
+      - vcf-sv-stats-types
+      - vcf-sv-stats-length
+      - vcf-sv-stats-filters
+      - vcf-sv-stats-breakends
+      - vcf-sv-stats-merged-support
+      - vcf-sv-stats-genotypes
+      - vcf-sv-stats-copy-number
+      - vcf-sv-stats-validation
+      - vcf-sv-stats-normalization
+      - vcf-sv-stats-provenance
+  - id: specialized_calls
+    title: Specialized Calls
+    description: ROH/UPD, ploidy, SMN1/SMN2 and hard-to-detect region call summaries.
+    sections:
+      - sentdhiomr2_roh_upd
+      - hiomr2_ploidy_by_au
+      - hiomr2_ploidy
+      - smn12_orthogonal_calls
+      - htd_calls
+  - id: identity_contamination
+    title: Identity & Contamination
+    description: Sample concordance, relatedness, sex checks, contamination and taxonomic screening.
+    sections:
+      - unmapped_metagenomics_ganon2_top_hits
+      - unmapped_metagenomics_ganon2_read_outcome_plot
+      - unmapped_metagenomics_ganon2_read_outcomes
+      - site_mix_donor
+      - site_mix_contam
+      - contamination
+      - ganon-stats-section
+      - ganon-reads-classified-section
+      - ganon-reads-match-type-section
+      - ganon-reads-match-to-read-ratio-section
+      - ganon-taxonomic-entries-section
+      - peddy_sample_qc
+      - sex_gender_rollup
+      - hiomr2-au-cram-fingerprint
+      - relatedness-lr
+      - relatedness-sr
+      - inferred_sex_chromosome_complement
+      - peddy-pca-plot
+      - peddy-hetcheck-plot
+      - peddy-sexcheck-plot
+      - somalier-stats
+      - somalier-relatedness
+      - somalier-relatedness-heatmap
+      - somalier-hetcheck
+      - somalier-sexcheck
+  - id: qc_metrics
+    title: QC Metrics
+    description: General Statistics, report completeness and component status receipts.
+    sections:
+      - general_stats
+      - report_completeness
+      - sentdhiomr2_component_status
+  - id: validation
+    title: Validation
+    description: Truthset comparison and accuracy evidence from GIAB and Truvari.
+    sections:
+      - sentdhiomr2_slim_truvari
+      - truvari-bench-classifications
+      - truvari-bench-pre-rec
+      - giab_concordance-section
+  - id: provenance_runtime
+    title: Provenance & Runtime
+    description: Specimens, samples, libraries, analysis-unit inputs, software versions and task benchmarks.
+    sections:
+      - multiqc_software_versions-section-1
+      - snakemake-samples-specimens
+      - snakemake-samples-samples
+      - snakemake-samples-libraries
+      - snakemake-samples-sequencing-inputs
+      - snakemake-samples-analysis-units
+      - snakemake-samples-analysis-unit-inputs
+      - snakemake-benchmarks-summary
+      - snakemake-benchmarks-walltime
+      - snakemake-benchmarks-vcpu-time
+      - snakemake-benchmarks-cpu-time
+      - snakemake-benchmarks-task-cost
