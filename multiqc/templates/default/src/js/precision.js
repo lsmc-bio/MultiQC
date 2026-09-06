@@ -3,8 +3,11 @@ export function formatSignificant(value, digits, decimalPoint = ".") {
   if (digits == null) return null;
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
-  // Do not coerce an exact large integer through IEEE-754 and invent a value.
-  if (/^-?\d+$/.test(String(value)) && !Number.isSafeInteger(number)) return String(value);
+  // Counts are exact, not approximate measurements. Never round an integer
+  // merely because the report requests significant digits for fractions.
+  // Preserve the original string before any unsafe IEEE-754 conversion.
+  if (/^-?\d+$/.test(String(value))) return String(value);
+  if (Number.isSafeInteger(number)) return String(number);
   const result = Number(number.toPrecision(digits)).toString();
   return decimalPoint === "." ? result : result.replace(".", decimalPoint);
 }

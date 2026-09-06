@@ -6,7 +6,7 @@ window.addEventListener('error', function(event) {
   const resource = event.target && (event.target.src || event.target.href);
   const message = resource ? 'Required report resource failed to load: ' + resource : event.message;
   if (!message) return;
-  const show = function() { const box = document.getElementById('report-presentation-error'); if (box) { box.hidden = false; box.textContent = message; } };
+  const show = function() { const box = document.getElementById('presentation-error'); if (box) { box.hidden = false; box.textContent = message; } };
   if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', show); else show();
 }, true);
 </script>

@@ -108,6 +108,18 @@ def main():
         ]
     )
     presentation_env = {
+        "MULTIQC_REPORT_STYLE": json.dumps(
+            {
+                "brand": {
+                    "logo": str(candidate / "multiqc/templates/default/assets/img/lsmc-mark.png"),
+                    "logo_dark": str(candidate / "multiqc/templates/default/assets/img/lsmc-mark.png"),
+                    "favicon": str(candidate / "multiqc/templates/default/assets/img/lsmc-mark.png"),
+                    "url": None,
+                    "alt": "LSMC",
+                    "width": 72,
+                },
+            }
+        ),
         "MULTIQC_REPORT_CONTEXT": json.dumps(
             {
                 "title": "Development draft: not yet validated",
@@ -129,7 +141,12 @@ def main():
     before = time.monotonic()
     with (out / "render.log").open("w") as log:
         result = subprocess.run(
-            command, cwd=source, env={**os.environ, **presentation_env}, stdout=log, stderr=subprocess.STDOUT, check=False
+            command,
+            cwd=source,
+            env={**os.environ, **presentation_env},
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            check=False,
         )
     elapsed = time.monotonic() - before
     final = {str(path): digest(path) for path in [original, selectors, *configs]}

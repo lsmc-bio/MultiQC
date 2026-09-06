@@ -76,19 +76,19 @@ merge, tag, or publish customer data.
 | BASE-01 | Both | Isolated branches from current maximum annotated tags | SUCCESS | contract_test | 0 | primary | Baseline above | | User checkouts preserved |
 | BASE-02 | MultiQC | Baseline tests, source/artwork/config inventory | IN_PROGRESS | contract_test | 0 | primary | Pending | | |
 | PAGE-01 | MultiQC | Independent section exporter and compact index | IN_PROGRESS | feature_implementation | 1 | primary | Pending | | |
-| PAGE-02 | MultiQC | Cross-page state, full-data tables, deduplication | OPEN | feature_implementation | 2 | primary | Pending | | |
-| CFG-01 | MultiQC | External context, styles, links and refresh utility | OPEN | feature_implementation | 3 | primary | Pending | | |
+| PAGE-02 | MultiQC | Cross-page state, full-data tables, deduplication | IN_PROGRESS | feature_implementation | 2 | primary | Implemented candidate, fixture browser checks; complete real-data controls pending | | |
+| CFG-01 | MultiQC | External context, styles, links and refresh utility | IN_PROGRESS | feature_implementation | 3 | primary | Candidate implementation and focused tests | | |
 | PRECISION-01 | MultiQC | Runtime display precision and field-by-field numeric review of original/candidate and Inflection reports | IN_PROGRESS | feature_implementation | 3/6 | primary | User added 2026-09-06; display only, retain underlying data/exports/thresholds | | |
-| UI-01 | MultiQC | Five themes, real LSMC mark, branding and print | OPEN | feature_implementation | 3 | primary | Pending | | |
-| SHARE-01 | MultiQC | Offline bundle and complete signed URL-map preparation | OPEN | feature_implementation | 3 | primary | Pending | | |
-| DAYOA-01 | DayOA | Explicit packaging config and Inflection resources | OPEN | feature_implementation | 4 | primary | Pending | | |
-| TEST-01 | Both | Focused regression and negative tests | OPEN | contract_test | 5 | primary | Pending | | |
-| REVIEW-01 | Both | Independent fresh-context Astra xhigh review | OPEN | contract_test | 5 | reviewer | Pending | | |
-| LIVE-01 | MultiQC | Frozen ILMN-14 inputs and real generation rc=0 | OPEN | contract_test | 6 | primary | Pending | | |
+| UI-01 | MultiQC | Five themes, real LSMC mark, branding and print | IN_PROGRESS | feature_implementation | 3 | primary | Assets bundled; original config legacy-logo override found in first draft | | |
+| SHARE-01 | MultiQC | Offline bundle and complete signed URL-map preparation | IN_PROGRESS | feature_implementation | 3 | primary | Fixture tests; real draft ZIP generated | | |
+| DAYOA-01 | DayOA | Explicit packaging config and Inflection resources | IN_PROGRESS | feature_implementation | 4 | primary | DayOA candidate 3256fa62, 12 focused tests pass, production environment unchanged | | |
+| TEST-01 | Both | Focused regression and negative tests | IN_PROGRESS | contract_test | 5 | primary | 35 and 78 Python tests, 18 JavaScript tests, 12 DayOA tests; remaining checks open | | |
+| REVIEW-01 | Both | Independent fresh-context Astra xhigh review | IN_PROGRESS | contract_test | 5 | reviewer | Preliminary review found table/copy/plot precision issues; final review pending | | |
+| LIVE-01 | MultiQC | Frozen ILMN-14 inputs and real generation rc=0 | SUCCESS | contract_test | 6 | primary | Draft01 rc=0, 164.06 s, 4,263 input files plus original report/configs hash-unchanged | | Existing inputs only; this row is generation proof, not scientific parity |
 | PARITY-01 | MultiQC | Every module/plot/table/warning/identity/export preserved | OPEN | contract_test | 6 | primary | Pending | | |
-| BROWSER-01 | MultiQC | Chrome/Firefox/Safari file and HTTPS acceptance | OPEN | contract_test | 6 | primary | Pending | | |
-| PERF-01 | MultiQC | 48/192 AU scaling and recorded performance targets | OPEN | contract_test | 6 | primary | Pending | | |
-| DELIVERY-01 | Both | ZIP, preview, reproduction docs, committed ledgers | OPEN | feature_implementation | 7 | primary | Pending | | |
+| BROWSER-01 | MultiQC | Chrome/Firefox/Safari file and HTTPS acceptance | IN_PROGRESS | contract_test | 6 | primary | Chrome synthetic fixture only; real draft browser check next | | |
+| PERF-01 | MultiQC | 48/192 AU scaling and recorded performance targets | ATTEMPTING_BUGFIX | contract_test | 6 | primary | First index about 5 MB, over target; repeated AI metadata and logos identified | Whole-report AI metadata and legacy logo embeds are copied into each page | |
+| DELIVERY-01 | Both | ZIP, preview, reproduction docs, committed ledgers | IN_PROGRESS | feature_implementation | 7 | primary | Draft01 ZIP generated, private relay approved, download/browser check in progress | | |
 
 Acceptance targets: initial index payload <=2 MB; usable index <=2 s; section
 controls <=3 s; filter <=200 ms, on recorded hardware versus same-source baseline.
@@ -153,3 +153,37 @@ real 48-AU and 192-AU performance, Firefox/Safari/HTTPS/print verification,
 candidate environment integration, final independent review, ZIP and preview.
 No gate is terminalized based only on prototype tests. No release, production
 adoption, customer-data publication, or full command catalog has occurred.
+
+### First existing-FSx draft, 2026-09-06 06:56 UTC
+
+Candidate commit `931cd2a8075ae50281f266f94e8ac94986963d61` was pushed only to
+`codex/paginated-multiqc-20260906`, cloned into a fresh locked report-output root,
+and installed in an isolated venv. It reuses read-only base dependencies from
+the original MultiQC environment (Plotly 6.9.0, Kaleido 0.2.1), with new
+presentation dependencies installed only in the venv. No production environment
+files were uninstalled or changed. Candidate wheel SHA-256:
+`1fa81460e159ef3484cbdc4c1826a870c034d0bf2d1bd366e8308dde938eec43`.
+
+Root:
+`/fsx/analysis_results/pclu-19074/ilmn14-multiqc-pagination-draft-20260906t064750z/`.
+Report: `report-draft01/index.html`; receipt: `report-draft01/render-receipt.json`.
+Persistent report-only tmux: `ilmn14-multiqc-pagination-validation-20260906`.
+
+- MultiQC rc=0; rendering 164.0616 s; peak child RSS 2,425,412 KiB.
+- 4,263 current FSx staged input files hashed before and after, unchanged.
+- Original report, selector manifest and both input config hashes unchanged.
+- 48 AUs detected; index plus 106 section pages, 101 scientific plot IDs,
+  146 scientific export files and 376 bundle files inventoried.
+- No DayOA, Snakemake or Slurm scientific jobs were invoked.
+- This is UNVALIDATED_DRAFT, not content-parity or performance acceptance.
+- Index is approximately 5 MB, exceeding the 2 MB acceptance target. Inspection
+  identified 3.46 MB of repeated AI metadata and two 0.69 MB legacy logo embeds.
+  Treat the performance row as ATTEMPTING_BUGFIX; no claim of completed targets.
+- User explicitly approved the private S3 relay
+  `s3://lsmc-ssf-sequencing-data/_codex_report_previews/ilmn14-pagination-20260906t064750z/`
+  for retrieving the draft ZIP. Bucket public ACLs/policies are blocked and
+  ignored/restricted. This is draft transfer, not production publication;
+  relay objects are retained, no S3 deletion.
+
+The first draft must not wait for exhaustive numeric and multi-browser gates.
+Deliver it with explicit caveats, then continue those gates and remaining fixes.
