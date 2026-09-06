@@ -14,6 +14,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const item = document.createElement("li");
     const a = document.createElement("a");
     a.dataset.presentationNav = id; a.className = "nav-l1";
+    if (window.MQCBundle) a.dataset.bundleNav = "";
     a.href = `#${id}`; a.textContent = title; item.append(a); nav.prepend(item);
   };
   if (payload.context) {

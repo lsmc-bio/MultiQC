@@ -18,7 +18,13 @@ if (typeof window !== "undefined") {
   const scrollToOutput = () => {
     if (!window.MQCBundle) return;
     const section = bundleFragment(location.hash).section;
-    if (section) requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView());
+    const element = section && document.getElementById(section);
+    if (element) {
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        if (ancestor.tagName === "DETAILS") ancestor.open = true;
+      }
+      requestAnimationFrame(() => element.scrollIntoView());
+    }
   };
   window.addEventListener("DOMContentLoaded", scrollToOutput);
   window.addEventListener("hashchange", scrollToOutput);
