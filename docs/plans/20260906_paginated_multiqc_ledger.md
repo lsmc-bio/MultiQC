@@ -5,6 +5,12 @@ Owner: primary Codex agent. Independent review: GPT-6 Astra, xhigh, fresh contex
 
 ## Scope and fixed decisions
 
+2026-09-06 amendment: the user requested pipeline-stage groups as configurable
+tabs instead of individual subsection pages. See
+`20260906T073317Z_pipeline_groups_ledger.md` for the implemented opt-in grouping,
+existing-FSx 48-AU draft04, review fixes, exact comparison caveats and delivery.
+This amendment does not close the full plan's outstanding acceptance gates.
+
 Implement opt-in `lsmc-paginated`, preserving ordinary single-file reports and
 all scientific content and exports. A compact main page indexes independently
 loaded sections; general statistics has its own page. Tables show 50 rows with
