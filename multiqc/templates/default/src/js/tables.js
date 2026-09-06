@@ -30,7 +30,7 @@ $(function () {
 
       return text;
     };
-    $(".mqc_per_sample_table").tablesorter({
+    $(".mqc_per_sample_table:not([data-paginated-table])").tablesorter({
       sortInitialOrder: "desc",
       textExtraction: getSortVal,
       cancelSelection: false,
@@ -200,12 +200,14 @@ $(function () {
       });
       $(".mqc_table_numrows").each(function () {
         let tid = $(this).attr("id").replace("_numrows", "");
+        if (window.MQCPaginatedTables?.has(tid)) return;
         $(this).text($("#" + tid + " tbody tr:visible").length);
       });
 
       // Hide empty columns
       $(".mqc_per_sample_table").each(function () {
         let table = $(this);
+        if (table.is("[data-paginated-table]")) return;
         let gsthidx = 0;
         table.find("thead th").each(function () {
           let th = $(this);
@@ -339,28 +341,29 @@ $(function () {
       }
       let plotDataset = [];
 
-      // Get all sample names first
-      let samples = $("#" + tableAnchor + " tbody tr")
-        .map(function () {
-          return $(this).children("th.rowheader").find(".th-sample-name").text();
-        })
-        .get();
+      // Windowed tables use the complete relevant row model, never only DOM rows.
+      const model = window.MQCPaginatedTables?.get(tableAnchor);
+      const sourceRows = model ? model.filtered().map((row) => ({
+        sample: row.sample,
+        first: row.precise[model.data.columns.indexOf(col1)],
+        second: row.precise[model.data.columns.indexOf(col2)],
+      })) : $("#" + tableAnchor + " tbody tr").map(function () {
+        return { sample: $(this).children("th.rowheader").find(".th-sample-name").text(),
+          first: $(this).children("td." + col1).data("sorting-val"),
+          second: $(this).children("td." + col2).data("sorting-val") };
+      }).get();
+      let samples = sourceRows.map((row) => row.sample);
 
       // Apply toolbox settings to get highlighting info
       let sampleSettings = applyToolboxSettings(samples);
 
-      $("#" + tableAnchor + " tbody tr").each(function (e) {
-        let tr = $(this);
-        let sName = $(this).children("th.rowheader").find(".th-sample-name").text();
-        let val_1 = $(this)
-          .children("td." + col1)
-          .data("sorting-val");
-        let val_2 = $(this)
-          .children("td." + col2)
-          .data("sorting-val");
+      sourceRows.forEach(function (row, rowIndex) {
+        let sName = row.sample;
+        let val_1 = row.first;
+        let val_2 = row.second;
 
         // Get settings for this sample
-        let settings = sampleSettings[samples.indexOf(sName)];
+        let settings = sampleSettings[rowIndex];
 
         // Skip hidden samples
         if (settings.hidden) {

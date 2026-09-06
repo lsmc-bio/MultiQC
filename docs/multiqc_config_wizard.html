@@ -2146,7 +2146,7 @@
       </div>
 
       <footer class="page-footer">
-        Generated on <time datetime="2026-07-17">2026-07-17</time> for MultiQC
+        Generated on <time datetime="2026-09-06">2026-09-06</time> for MultiQC
         <code>1.36.dev0</code>.
       </footer>
     </main>
@@ -2302,6 +2302,56 @@
                                 "items_enum": null,
                                 "examples": []
                         },
+                        "report_context_file": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "Path to runtime introduction configuration.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
+                        "report_style_file": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "Path to external presentation and branding configuration.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
+                        "report_display_file": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "string",
+                                "description": "Path to display-only significant-digit settings and per-field overrides.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
+                        "report_links": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "object",
+                                "description": "Ordered report-local and external links, with title and items.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
+                        "report_groups": {
+                                "deprecated": false,
+                                "multiline": false,
+                                "type": "array",
+                                "description": "Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.",
+                                "default": null,
+                                "enum": null,
+                                "items_enum": null,
+                                "examples": []
+                        },
                         "lsmc_default_theme": {
                                 "deprecated": false,
                                 "multiline": false,
@@ -2311,7 +2361,6 @@
                                 "enum": [
                                         "original",
                                         "lsmc",
-                                        "dark",
                                         "light",
                                         "nosee",
                                         "tacky"
@@ -4191,22 +4240,24 @@
                                                         "fn": "rules_benchmark_data_mqc.tsv"
                                                 }
                                         ],
-                                        "snakemake_samples/samples": [
-                                                {
-                                                        "fn": "samples.tsv"
-                                                },
-                                                {
-                                                        "fn": "input_samples_mqc.tsv"
-                                                }
-                                        ],
-                                        "snakemake_samples/units": [
-                                                {
-                                                        "fn": "units.tsv"
-                                                },
-                                                {
-                                                        "fn": "input_units_mqc.tsv"
-                                                }
-                                        ],
+                                        "snakemake_samples/specimens": {
+                                                "fn": "specimens.tsv"
+                                        },
+                                        "snakemake_samples/samples": {
+                                                "fn": "samples.tsv"
+                                        },
+                                        "snakemake_samples/libraries": {
+                                                "fn": "libraries.tsv"
+                                        },
+                                        "snakemake_samples/sequencing_inputs": {
+                                                "fn": "sequencing_inputs.tsv"
+                                        },
+                                        "snakemake_samples/analysis_units": {
+                                                "fn": "analysis_units.tsv"
+                                        },
+                                        "snakemake_samples/analysis_unit_inputs": {
+                                                "fn": "analysis_unit_inputs.tsv"
+                                        },
                                         "snakemake_samples/gender_checks": {
                                                 "fn": "reported_vs_inferred_sex_check_mqc.tsv"
                                         },
@@ -4449,6 +4500,12 @@
                                                 "fn": "*.stats",
                                                 "contents": "# gffcompare",
                                                 "num_lines": 2
+                                        },
+                                        "giabconcordance/rtg": {
+                                                "fn": "giab_concordance_mqc.tsv"
+                                        },
+                                        "giabconcordance/jasmine_le50": {
+                                                "fn": "sentdhiomr2_jasmine_le50_rtg_mqc.tsv"
                                         },
                                         "glimpse/err_spl": {
                                                 "fn": "*.error.spl.txt.gz",
@@ -5540,6 +5597,10 @@
                                                 "fn": "log.txt",
                                                 "num_lines": 10
                                         },
+                                        "truvari/dayoa_aggregate": {
+                                                "fn": "sentdhiomr2_truvari_mqc.tsv",
+                                                "contents": "Sample\tSampleID\tAnalysisUnitUID\tentity_scope\tdeclared_grain\ttool\ttool_code\tquery\tstatus\tTP-base\tTP-comp\tFP\tFN\tprecision\trecall\tf1\tprojected_records\texcluded_records"
+                                        },
                                         "umicollapse": {
                                                 "num_lines": 100,
                                                 "contents": "UMI collapsing finished in "
@@ -5563,6 +5624,9 @@
                                         "varscan2/mpileup2cns": {
                                                 "contents": "Only variants will be reported",
                                                 "num_lines": 10
+                                        },
+                                        "vcf_sv_stats": {
+                                                "fn": "*.vcf-sv-stats.json"
                                         },
                                         "vcftools/relatedness2": {
                                                 "fn": "*.relatedness2"
@@ -7831,13 +7895,92 @@
       "section": "Report Appearance",
       "title": "Template Dark Mode"
     },
+    "report_context_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to runtime introduction configuration.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Context File"
+    },
+    "report_style_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to external presentation and branding configuration.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Style File"
+    },
+    "report_display_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to display-only significant-digit settings and per-field overrides.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Display File"
+    },
+    "report_links": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Ordered report-local and external links, with title and items.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Links"
+    },
+    "report_groups": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Groups"
+    },
     "lsmc_default_theme": {
       "anyOf": [
         {
           "enum": [
             "original",
             "lsmc",
-            "dark",
             "light",
             "nosee",
             "tacky"

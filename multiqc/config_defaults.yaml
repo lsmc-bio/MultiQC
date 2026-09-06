@@ -28,6 +28,11 @@ simple_output: false
 template: "default"
 template_dark_mode: true
 lsmc_default_theme: "lsmc"
+report_context_file: null
+report_style_file: null
+report_display_file: null
+report_links: null
+report_groups: null
 lsmc_service: "qeo"
 lsmc_environment: "production"
 lsmc_allow_tacky: false

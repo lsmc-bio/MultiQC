@@ -56,6 +56,10 @@ class Cell:
     mod: ValueT
     fmt: str
 
+    def __post_init__(self):
+        # Presentation-only attribute, deliberately not a dataclass/export field.
+        self.presentation_value = self.mod
+
 
 ExtValueT = Union[int, float, str, bool, Cell]
 
@@ -657,6 +661,7 @@ def _process_and_format_value(val: ExtValueT, column: ColumnMeta, parse_numeric:
         val = val[1:-1]
 
     # Now also calculate formatted values
+    presentation_value = val
     valstr = str(val)
     fmt: Union[None, str, Callable[[ValueT], str]] = column.format
     if fmt is None:
@@ -687,7 +692,9 @@ def _process_and_format_value(val: ExtValueT, column: ColumnMeta, parse_numeric:
                     f"Error applying format string '{fmt}' to table value '{column.clean_rid}': '{val}'. {e}. "
                     f"Check if your format string is correct."
                 )
-    return Cell(raw=val_unmodified, mod=val, fmt=valstr)
+    cell = Cell(raw=val_unmodified, mod=val, fmt=valstr)
+    cell.presentation_value = presentation_value
+    return cell
 
 
 def _determine_dmin_and_dmax(
@@ -877,6 +884,24 @@ def render_html(
 
                 val: ValueT = row.data[col_key].mod
                 valstr: str = row.data[col_key].fmt
+                # Preserve a numeric presentation source separately from grouped sort keys.
+                numeric_attr = ""
+                if isinstance(val, (int, float)) and not isinstance(val, bool):
+                    numeric_attr = (
+                        f' data-numeric-value="{escape(str(row.data[col_key].presentation_value))}"'
+                        f' data-raw-value="{escape(str(row.data[col_key].raw))}"'
+                        f' data-field-id="{escape(str(dt.anchor))}/{escape(str(col_anchor))}"'
+                        f' data-numeric-suffix="{escape(str(header.suffix or ""))}"'
+                    )
+                    # Wrap only a numeric text token; leave currency, units, and badges intact.
+                    # Custom HTML formatters are retained verbatim and audited separately.
+                    if "<" not in valstr:
+                        valstr = re.sub(
+                            r"[+-]?(?:\d[\d,]*\.?\d*|\.\d+)(?:[eE][+-]?\d+)?",
+                            lambda match: '<span class="mqc-numeric-token">' + match[0] + "</span>",
+                            valstr,
+                            count=1,
+                        )
 
                 group_to_sample_to_anchor_to_val[group_name][row.sample][col_anchor] = val
                 group_to_sample_to_nice_name_to_val[group_name][row.sample][col_key] = val
@@ -986,7 +1011,7 @@ def render_html(
                 if isinstance(val, str) and val in header.bgcols.keys():
                     col = f'style="background-color:{header.bgcols[val]} !important;"'
                     group_to_sample_to_anchor_to_td[group_name][row.sample][col_anchor] = (
-                        f'<td data-sorting-val="{escape(str(sorting_val))}" class="{col_anchor} {td_hide_cls}" {col}>{valstr}</td>'
+                        f'<td{numeric_attr} data-sorting-val="{escape(str(sorting_val))}" class="{col_anchor} {td_hide_cls}" {col}>{valstr}</td>'
                     )
 
                 # Build table cell background colour bar
@@ -1002,13 +1027,13 @@ def render_html(
                     wrapper_html = f'<div class="wrapper">{bar_html}{val_html}</div>'
 
                     group_to_sample_to_anchor_to_td[group_name][row.sample][col_anchor] = (
-                        f'<td data-sorting-val="{escape(str(sorting_val))}" class="data-coloured {col_anchor} {td_hide_cls}">{wrapper_html}</td>'
+                        f'<td{numeric_attr} data-sorting-val="{escape(str(sorting_val))}" class="data-coloured {col_anchor} {td_hide_cls}">{wrapper_html}</td>'
                     )
 
                 # Scale / background colours are disabled
                 else:
                     group_to_sample_to_anchor_to_td[group_name][row.sample][col_anchor] = (
-                        f'<td data-sorting-val="{escape(str(sorting_val))}" class="{col_anchor} {td_hide_cls}">{valstr}</td>'
+                        f'<td{numeric_attr} data-sorting-val="{escape(str(sorting_val))}" class="{col_anchor} {td_hide_cls}">{valstr}</td>'
                     )
 
                 # Is this cell hidden or empty?

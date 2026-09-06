@@ -133,6 +133,7 @@ class MultiqcModule(BaseMultiqcModule):
             "max": 100,
             "min": 0,
             "scale": "PRGn",
+            "format": "{:.4g}",
         }
         bench_headers["recall"] = {
             "title": "Recall",
@@ -143,6 +144,7 @@ class MultiqcModule(BaseMultiqcModule):
             "max": 100,
             "min": 0,
             "scale": "BrBG",
+            "format": "{:.4g}",
         }
         bench_headers["f1"] = {
             "title": "F1",
@@ -153,6 +155,7 @@ class MultiqcModule(BaseMultiqcModule):
             "max": 100,
             "min": 0,
             "scale": "RdYlGn",
+            "format": "{:.4g}",
         }
         bench_headers["gt_concordance"] = {
             "title": "GT concordance",
@@ -164,6 +167,7 @@ class MultiqcModule(BaseMultiqcModule):
             "min": 0,
             "hidden": True,
             "modify": lambda x: x * 100,
+            "format": "{:.4g}",
         }
 
         self.general_stats_addcols(data, bench_headers)
@@ -392,6 +396,7 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
             "recall": {
                 "title": "Recall",
@@ -401,6 +406,7 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
             "f1": {
                 "title": "F1",
@@ -410,6 +416,7 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
         }
         if successful:

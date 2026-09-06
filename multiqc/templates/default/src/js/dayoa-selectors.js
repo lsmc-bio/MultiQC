@@ -1,10 +1,22 @@
 /* Exact, manifest-driven report display filtering for DayOA reports. */
+import { bundleFragment, bundleHref } from "./bundle-navigation.js";
 
 export const dayoaSelectorDimensions = {
   specimen: ["SPECIMEN_ID", "SPECIMEN_EUID"],
   sample: ["SAMPLEID", "SAMPLE_EUID"],
-  library: ["ANALYSIS_UNIT_UID", "LIBRARY_EUID"],
+  analysis_unit: ["ANALYSIS_UNIT_UID", "ANALYSIS_UNIT_EUID"],
 };
+
+const dayoaSelectorTopLevelFields = [
+  "plot_groupings",
+  "record_count",
+  "records",
+  "schema_version",
+  "selector_record_count",
+  "selector_records",
+  "source_row_count",
+  "source_staging_manifest",
+];
 
 export const createDayoaSelectorState = () => ({
   modality: "all",
@@ -16,6 +28,76 @@ export const dayoaIdentityKey = (record, dimension) => {
   const [idField, euidField] = dayoaSelectorDimensions[dimension];
   if (!record[idField] && !record[euidField]) return null;
   return JSON.stringify([record[idField], record[euidField]]);
+};
+
+export const dayoaSelectorIdentityKeys = (records, dimension) =>
+  [
+    ...new Set(
+      records
+        .filter((record) => record.selector_eligible === true)
+        .map((record) => dayoaIdentityKey(record, dimension))
+        .filter(Boolean),
+    ),
+  ];
+
+export const validateDayoaSelectorManifest = (manifest) => {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+    throw new Error("DayOA report selector manifest must be an object");
+  }
+  const actualFields = Object.keys(manifest).sort();
+  if (JSON.stringify(actualFields) !== JSON.stringify(dayoaSelectorTopLevelFields)) {
+    throw new Error("DayOA report selector manifest must contain the exact v3 top-level fields");
+  }
+  if (manifest.schema_version !== "dayoa-report-selectors-v3") {
+    throw new Error("DayOA report selector manifest must use dayoa-report-selectors-v3");
+  }
+  if (!Array.isArray(manifest.records) || manifest.records.length === 0) {
+    throw new Error("DayOA report selector manifest records must be a non-empty array");
+  }
+  if (!Array.isArray(manifest.selector_records)) {
+    throw new Error("DayOA report selector manifest selector_records must be an array");
+  }
+  if (!Number.isInteger(manifest.record_count) || manifest.record_count !== manifest.records.length) {
+    throw new Error("DayOA report selector manifest record_count does not match records");
+  }
+  if (
+    !Number.isInteger(manifest.selector_record_count) ||
+    manifest.selector_record_count !== manifest.selector_records.length
+  ) {
+    throw new Error("DayOA report selector manifest selector_record_count does not match selector_records");
+  }
+  if (!Number.isInteger(manifest.source_row_count) || manifest.source_row_count < manifest.record_count) {
+    throw new Error("DayOA report selector manifest source_row_count is invalid");
+  }
+  if (typeof manifest.source_staging_manifest !== "string" || !manifest.source_staging_manifest) {
+    throw new Error("DayOA report selector manifest source_staging_manifest is invalid");
+  }
+  if (!manifest.plot_groupings || typeof manifest.plot_groupings !== "object" || Array.isArray(manifest.plot_groupings)) {
+    throw new Error("DayOA report selector manifest plot_groupings must be an object");
+  }
+
+  const knownAnalysisIds = manifest.records.map((record) => record.MultiQCAnalysisID);
+  if (knownAnalysisIds.some((analysisId) => typeof analysisId !== "string" || !analysisId)) {
+    throw new Error("DayOA report selector manifest has a blank or invalid MultiQCAnalysisID");
+  }
+  if (new Set(knownAnalysisIds).size !== knownAnalysisIds.length) {
+    throw new Error("DayOA report selector manifest repeats a MultiQCAnalysisID");
+  }
+  if (manifest.records.some((record) => typeof record.selector_eligible !== "boolean")) {
+    throw new Error("DayOA report selector manifest records must declare boolean selector_eligible values");
+  }
+  const expectedSelectorRecords = manifest.records.filter((record) => record.selector_eligible);
+  if (
+    expectedSelectorRecords.length !== manifest.selector_records.length ||
+    expectedSelectorRecords.some(
+      (record, index) => JSON.stringify(record) !== JSON.stringify(manifest.selector_records[index]),
+    )
+  ) {
+    throw new Error(
+      "DayOA report selector manifest selector_records must equal the in-order selector-eligible subset of records",
+    );
+  }
+  return manifest;
 };
 
 export const dayoaSelectorValueState = (state, dimension, key) => {
@@ -34,7 +116,8 @@ export const cycleDayoaSelectorValue = (state, dimension, key) => {
 };
 
 export const dayoaRecordMatches = (record, state) => {
-  if (state.modality !== "all" && record.modality !== state.modality && record.modality !== "global") return false;
+  if (record.modality === "global") return true;
+  if (state.modality !== "all" && record.modality !== state.modality) return false;
   return Object.keys(dayoaSelectorDimensions).every((dimension) => {
     const key = dayoaIdentityKey(record, dimension);
     if (state.excluded[dimension].has(key)) return false;
@@ -114,19 +197,16 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
 
   if (typeof document === "undefined") return;
   const manifestElement = document.getElementById("dayoa_report_selectors");
-  if (!manifestElement) return;
+  if (!manifestElement && !window.MQCBundle?.identities.analysis_unit.length) return;
 
-  const manifest = JSON.parse(manifestElement.textContent);
-  if (manifest.schema_version !== "dayoa-report-selectors-v2" || !Array.isArray(manifest.records)) {
-    throw new Error("Invalid embedded DayOA report selector manifest");
-  }
+  const manifest = window.MQCBundle
+    ? { ...window.MQCPageData.selectors, selector_records: window.MQCPageData.selectors.records.filter((r) => r.selector_eligible) }
+    : validateDayoaSelectorManifest(JSON.parse(manifestElement.textContent));
+  if (window.MQCBundle) Object.values(manifest.plot_groupings).forEach((dimensions) => dimensions.forEach((dimension) => dimension.groups.forEach((group) => {
+    group.members = manifest.memberships[group.members_ref];
+    delete group.members_ref;
+  })));
   const knownAnalysisIds = manifest.records.map((record) => record.MultiQCAnalysisID);
-  if (knownAnalysisIds.some((analysisId) => typeof analysisId !== "string" || !analysisId)) {
-    throw new Error("DayOA report selector manifest has a blank or invalid MultiQCAnalysisID");
-  }
-  if (new Set(knownAnalysisIds).size !== knownAnalysisIds.length) {
-    throw new Error("DayOA report selector manifest repeats a MultiQCAnalysisID");
-  }
   const plotGroupings = validateDayoaPlotGroupings(manifest.plot_groupings, knownAnalysisIds);
 
   const state = createDayoaSelectorState();
@@ -138,8 +218,8 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   };
   const availableIdentities = Object.fromEntries(
     Object.keys(dayoaSelectorDimensions).map((dimension) => {
-      const keys = new Set(manifest.records.map((record) => dayoaIdentityKey(record, dimension)).filter(Boolean));
-      return [dimension, [...keys].sort((left, right) => identityLabel(left).localeCompare(identityLabel(right)))];
+      const keys = window.MQCBundle ? window.MQCBundle.identities[dimension] : dayoaSelectorIdentityKeys(manifest.selector_records, dimension);
+      return [dimension, keys.sort((left, right) => identityLabel(left).localeCompare(identityLabel(right)))];
     }),
   );
 
@@ -154,6 +234,15 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
         Object.entries(state.excluded).map(([dimension, values]) => [dimension, [...values]]),
       ),
     };
+    if (window.MQCBundle) {
+      window.MQCBundle.state = serialized;
+      document.querySelectorAll("a[data-bundle-nav]").forEach((a) => {
+        const original = a.dataset.bundleHref || a.getAttribute("href");
+        a.dataset.bundleHref = original;
+        a.href = bundleHref(original, serialized);
+      });
+      history.replaceState(null, "", bundleHref(location.pathname + location.search + location.hash, serialized));
+    }
     try {
       localStorage.setItem(storageKey, JSON.stringify(serialized));
     } catch (_error) {
@@ -164,14 +253,15 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
   const restoreState = () => {
     let saved = null;
     try {
-      saved = JSON.parse(localStorage.getItem(storageKey));
+      const fragment = window.MQCBundle ? bundleFragment(location.hash).state : null;
+      saved = JSON.parse(fragment || localStorage.getItem(storageKey));
     } catch (_error) {
       return;
     }
     if (
       !saved ||
       saved.schema_version !== "dayoa-report-selector-state-v3" ||
-      !["all", "sr", "lr", "hybrid"].includes(saved.modality)
+      !["all", "sr", "rsr", "lr", "hybrid"].includes(saved.modality)
     )
       return;
     state.modality = saved.modality;
@@ -209,7 +299,9 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
     const includedCount = Object.values(state.included).reduce((total, values) => total + values.size, 0);
     const excludedCount = Object.values(state.excluded).reduce((total, values) => total + values.size, 0);
     if (status)
-      status.textContent = `Showing ${visible} of ${manifest.records.length} report records. ${includedCount} included, ${excludedCount} excluded.`;
+      status.textContent = window.MQCBundle?.is_index
+        ? `Selections apply across all sections. ${includedCount} included, ${excludedCount} excluded.`
+        : `Showing ${visible} of ${manifest.records.length} section records. ${includedCount} included, ${excludedCount} excluded.`;
     saveState();
   };
 
@@ -392,5 +484,10 @@ export const validateDayoaPlotGroupingCoverage = (plotId, dimension, plottedAnal
       applyFilters();
     });
     applyFilters();
+    if (window.MQCBundle) window.addEventListener("hashchange", () => {
+      restoreState();
+      updateControls();
+      applyFilters();
+    });
   });
 })();

@@ -156,6 +156,12 @@ def write_results(return_html: bool = False) -> Optional[str]:
             logger.warning(f"Couldn't remove data dir: {e}")
 
     if paths.report_path:
+        if config.template == "lsmc-paginated" and config.make_report:
+            from multiqc.core.paginated import finalize_bundle
+
+            finalize_bundle(paths.report_path, paths.data_dir, paths.plots_dir)
+            if return_html:
+                html_content = paths.report_path.read_text(encoding="utf-8")
         logger.debug(f"Report HTML written to {paths.report_path}")
 
     # Return HTML content if requested
@@ -495,6 +501,9 @@ def _write_html_report(to_stdout: bool, report_path: Optional[Path], return_html
     """
     Render and write report HTML to disk
     """
+    from multiqc.core.presentation import load_presentation
+
+    report.presentation = load_presentation()
     # Copy over css & js files if requested by the theme
     for mod in report.modules:
         if mod.hidden:
@@ -602,6 +611,13 @@ def _write_html_report(to_stdout: bool, report_path: Optional[Path], return_html
         j_template = env.get_template(template_mod.base_fn, globals={"development": config.development})
     except:  # noqa: E722
         raise IOError(f"Could not load {config.template} template file '{template_mod.base_fn}'")
+
+    if config.template == "lsmc-paginated":
+        if to_stdout or report_path is None or config.make_pdf:
+            raise ValueError("lsmc-paginated requires a file output and does not support --pdf")
+        from multiqc.core.paginated import write_paginated
+
+        return write_paginated(report_path, env, return_html=return_html)
 
     # Compress the report plot JSON data
     runtime_compression_start = time.time()

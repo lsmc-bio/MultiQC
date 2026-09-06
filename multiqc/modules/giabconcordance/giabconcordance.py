@@ -171,6 +171,7 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
             "Sensitivity-Recall": {
                 "title": "GIAB Recall",
@@ -180,6 +181,7 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
             "Fscore": {
                 "title": "GIAB F1",
@@ -189,6 +191,7 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
         }
 
@@ -260,11 +263,30 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "max": 100,
                 "scale": "RdYlGn",
+                "format": "{:.4g}",
+            },
+            "FDR": {
+                "title": "FDR",
+                "suffix": "%",
+                "modify": lambda x: x * 100,
+                "min": 0,
+                "max": 100,
+                "scale": "RdYlGn-rev",
+                "format": "{:.4g}",
+            },
+            "PPV": {
+                "title": "PPV",
+                "suffix": "%",
+                "modify": lambda x: x * 100,
+                "min": 0,
+                "max": 100,
+                "scale": "RdYlGn",
+                "format": "{:.4g}",
             },
             "AllVarMeanDP": {
                 "title": "Mean DP",
                 "description": "Mean depth across all evaluated variant records",
-                "format": "{:.1f}",
+                "format": "{:.4g}",
                 "scale": "Blues",
             },
         }

@@ -286,7 +286,16 @@ class MultiQCConfig(BaseModel):
             template_dark_mode: Optional[bool] = cfg(
                 "Enable the dark mode toggle in the report template.",
             )
-            lsmc_default_theme: Optional[Literal["original", "lsmc", "dark", "light", "nosee", "tacky"]] = cfg(
+            report_context_file: Optional[str] = cfg("Path to runtime introduction configuration.")
+            report_style_file: Optional[str] = cfg("Path to external presentation and branding configuration.")
+            report_display_file: Optional[str] = cfg("Path to display-only significant-digit settings and per-field overrides.")
+            report_links: Optional[Dict[str, Any]] = cfg("Ordered report-local and external links, with title and items.")
+            report_groups: Optional[List[Dict[str, Any]]] = cfg(
+                "Ordered lsmc-paginated tabs. Each group has id, title, optional description, "
+                "and modules and/or sections containing exact output anchors. "
+                "Every visible section must be assigned exactly once. Omit for individual section pages."
+            )
+            lsmc_default_theme: Optional[Literal["original", "lsmc", "light", "nosee", "tacky"]] = cfg(
                 "Initial LSMC report theme. The original theme preserves the upstream MultiQC presentation.",
                 examples=["lsmc"],
             )

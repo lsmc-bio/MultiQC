@@ -1,0 +1,17 @@
+{
+  "default_theme": "lsmc",
+  "menu": ["original", "lsmc", "light", "nosee", "tacky"],
+  "show_switcher": true,
+  "environment": "internal",
+  "allow_tacky": false,
+  "tacky_restricted_environments": ["prod", "production", "clinical"],
+  "themes": {
+    "original": {"label": "Original", "mode": "light", "tokens": {}},
+    "lsmc": {"label": "LSMC", "mode": "dark", "tokens": {}},
+    "light": {"label": "Light", "mode": "light", "tokens": {}},
+    "nosee": {"label": "NoSee", "mode": "light", "tokens": {}},
+    "tacky": {"label": "Tacky", "mode": "light", "tokens": {}}
+  },
+  "brand": {"logo": null, "logo_dark": null, "favicon": null, "alt": "LSMC", "url": "https://www.lsmc.bio/", "width": 72},
+  "css_files": []
+}

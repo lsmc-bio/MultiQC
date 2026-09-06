@@ -197,7 +197,14 @@ window.callAfterDecompressed.push(function (mqc_plotdata) {
           .removeClass("not_loaded")
           .html('<button class="btn btn-outline-secondary btn-lg render_plot">Show plot</button>');
       } else {
-        renderPlot(anchor);
+        if (window.MQCBundle) {
+          const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) { renderPlot(anchor); observer.disconnect(); }
+          }, { rootMargin: "150px" });
+          observer.observe(document.getElementById(anchor));
+        } else {
+          renderPlot(anchor);
+        }
       }
       if ($(".hc-plot.not_loaded:visible").length === 0)
         // All plots loaded successfully (rendered or deferred with "Show Plot"), so hiding the warning

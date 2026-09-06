@@ -947,13 +947,92 @@
       "section": "Report Appearance",
       "title": "Template Dark Mode"
     },
+    "report_context_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to runtime introduction configuration.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Context File"
+    },
+    "report_style_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to external presentation and branding configuration.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Style File"
+    },
+    "report_display_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to display-only significant-digit settings and per-field overrides.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Display File"
+    },
+    "report_links": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Ordered report-local and external links, with title and items.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Links"
+    },
+    "report_groups": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Ordered lsmc-paginated tabs. Each group has id, title, optional description, and modules and/or sections containing exact output anchors. Every visible section must be assigned exactly once. Omit for individual section pages.",
+      "group": "Template",
+      "section": "Report Appearance",
+      "title": "Report Groups"
+    },
     "lsmc_default_theme": {
       "anyOf": [
         {
           "enum": [
             "original",
             "lsmc",
-            "dark",
             "light",
             "nosee",
             "tacky"
