@@ -120,7 +120,7 @@ FSx inputs. No scientific workflows, comparisons, browser tests or release.
 | ID | Area | Requirement | Status | Category | Gate | Owner | Evidence | Root Cause | Terminal Note |
 |---|---|---|---|---|---|---|---|---|---|
 | HEADER-01 | Template | Global title/logo and section-first sidebar | SUCCESS | feature_implementation | user request | primary | Shared paginated masthead, header guard and CSS; asset build complete | | Tests explicitly skipped by user direction |
-| HEADER-02 | Example | Regenerate 48-AU report and provide review files | IN_PROGRESS | feature_implementation | user request | primary | Existing FSx inputs, fresh draft05 output | | |
+| HEADER-02 | Example | Regenerate 48-AU report and provide review files | SUCCESS | feature_implementation | user request | primary | Draft05 render rc=0, ZIP download rc=0 | | Ready for user approval; tests skipped |
 
 Candidate renderer: `fd1087f3571db53e6fa54c90b59cc5fa5c104b09`.
 Report-only environment wheel SHA-256:
@@ -129,3 +129,25 @@ Reused the existing one-window/one-pane interactive report tmux on pclu-19074.
 Recorded source read visit and acquired the candidate output-root write lock.
 Other cluster jobs belong to the separate segdup-tuning analysis and were not
 modified. This request submits no scientific workflow work.
+
+Draft05 completed 2026-09-06T08:09:29Z: MultiQC rc=0, render 164.1842 seconds,
+peak child RSS 2,519,768 KiB. The generation receipt records 4,263 unchanged
+source inputs and zero scientific workflows launched. Output remains marked
+UNVALIDATED_DRAFT. No unit, integration, browser or parity tests were run for
+this amendment, as requested. Build and generation are execution evidence,
+not a claim that the original full-plan acceptance gates passed.
+
+The ZIP was created in the candidate output root for private-relay download.
+Output-root lock released after packaging; interactive SSM and idle report
+tmux remain alive. Renderer stays frozen at `fd1087f35`; subsequent local
+commits retain the generated JS build artifact and ledger notes only.
+
+Local review delivery:
+- `output/ILMN-14_48AU_grouped_draft05.zip`
+- `output/ILMN-14_48AU_grouped_draft05/report-draft05-grouped/index.html`
+- Download command rc=0; private relay retained under
+  `s3://lsmc-ssf-sequencing-data/_codex_report_previews/ilmn14-pagination-20260906t064750z/dyec-headnode-transfer/pclu-19074/20260906T081020Z-0a932c64b57d/`.
+
+Header amendment rows terminal: yes, 2 SUCCESS. Requested implementation and
+regeneration complete; user visual approval pending. Full original plan still
+incomplete, with its previously recorded acceptance gates unchanged.
