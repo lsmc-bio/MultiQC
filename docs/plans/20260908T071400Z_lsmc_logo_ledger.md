@@ -1,5 +1,13 @@
 # LSMC report logo replacement
 
+## Current instruction and release disposition
+
+The user reversed the requested branding on 2026-09-08: delete the cyan lightning-bolt asset and retain only `lsmc-compact*.png`. The earlier cyan-logo implementation and QA below are historical and superseded.
+
+Current release: `1.36.dev0-lsmc.19`. Restore the original compact black and white PNGs, remove the cyan `lsmc-logo.png`, keep the obsolete geometric `lsmc-mark.png` removed, and select compact black for light/print/favicon and compact white for dark reports. The replay script uses the same pair. DayOA's cyan custom-logo asset is removed in its corresponding release branch.
+
+The user explicitly instructed no tests before commit/push/tag. No test, lint, rendering, or browser QA is run for the compact-only revision. Earlier 55-test evidence applies only to the superseded cyan revision and must not be claimed for this release. Git publication receipts are recorded in the DYEC release-chain ledger.
+
 ## Gate 0
 
 - Request: use the supplied new LSMC logo and remove the old LSMC logo as an option.

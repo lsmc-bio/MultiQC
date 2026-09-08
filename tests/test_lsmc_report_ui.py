@@ -313,7 +313,7 @@ def test_lsmc_compact_logo_is_upper_right_and_print_safe() -> None:
     brand = header[brand_start:brand_end]
     assert brand.index("lsmc-report-kicker") < brand.index("report.presentation.style.brand.logo")
     assert "lsmc-compact-black-transparent.png" not in brand
-    assert (REPO_ROOT / "multiqc/templates/default/assets/img/lsmc-logo.png").is_file()
+    assert (REPO_ROOT / "multiqc/templates/default/assets/img/lsmc-compact-black-transparent.png").is_file()
     assert "justify-content: flex-end;" in styles
     assert 'html[data-theme="lsmc"]:not([data-theme="original"]) .lsmc-native-logo-on-dark' in styles
     assert 'html[data-theme]:not([data-theme="original"]) .lsmc-native-logo-on-light' in styles

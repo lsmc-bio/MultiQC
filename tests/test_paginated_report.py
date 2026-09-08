@@ -21,13 +21,18 @@ from multiqc.core.update_config import ClConfig
 def test_only_current_lsmc_logo_is_shipped_and_used(theme, monkeypatch):
     config.reset()
     monkeypatch.setenv("MULTIQC_REPORT_STYLE", json.dumps({"default_theme": theme, "allow_tacky": True}))
-    logo = (ASSETS / "assets/img/lsmc-logo.png").read_bytes()
-    assert hashlib.sha256(logo).hexdigest() == "d2e52c4eac04778246a160a2d5d35155c6c3198e2352f2c38504244fe2ad16e0"
+    logo = (ASSETS / "assets/img/lsmc-compact-black-transparent.png").read_bytes()
     expected = "data:image/png;base64," + base64.b64encode(logo).decode("ascii")
+    dark = "data:image/png;base64," + base64.b64encode(
+        (ASSETS / "assets/img/lsmc-compact-white-transparent.png").read_bytes()
+    ).decode("ascii")
     style = load_presentation()["style"]
     assert style["theme_icon"] == expected
-    assert all(style["brand"][key] == expected for key in ("logo", "logo_dark", "favicon"))
-    assert sorted(path.name for path in (ASSETS / "assets/img").glob("lsmc*.png")) == ["lsmc-logo.png"]
+    assert all(style["brand"][key] == expected for key in ("logo", "favicon"))
+    assert style["brand"]["logo_dark"] == dark
+    assert sorted(path.name for path in (ASSETS / "assets/img").glob("lsmc*.png")) == [
+        "lsmc-compact-black-transparent.png", "lsmc-compact-white-transparent.png"
+    ]
 
 
 def test_clipboard_units_are_parser_extracted_text():

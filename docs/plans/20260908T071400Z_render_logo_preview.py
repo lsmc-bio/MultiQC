@@ -1,4 +1,4 @@
-"""Render small report fixtures to verify the supplied LSMC branding."""
+"""Render small report fixtures to verify compact-only LSMC branding."""
 
 import base64
 import json
@@ -20,7 +20,10 @@ source.mkdir(parents=True, exist_ok=True)
     '# plot_type: "table"\n# section_name: "Logo preview metrics"\nSample\tReads\nExample-1\t100\nExample-2\t200\n'
 )
 expected = "data:image/png;base64," + base64.b64encode(
-    (ROOT / "multiqc/templates/default/assets/img/lsmc-logo.png").read_bytes()
+    (ROOT / "multiqc/templates/default/assets/img/lsmc-compact-black-transparent.png").read_bytes()
+).decode("ascii")
+dark = "data:image/png;base64," + base64.b64encode(
+    (ROOT / "multiqc/templates/default/assets/img/lsmc-compact-white-transparent.png").read_bytes()
 ).decode("ascii")
 receipts = []
 for template, folder in [("default", "single"), ("lsmc-paginated", "paginated")]:
@@ -43,7 +46,7 @@ for template, folder in [("default", "single"), ("lsmc-paginated", "paginated")]
         logos = soup.select(".lsmc-native-brand img")
         if not logos:
             continue
-        assert all(logo["src"] == expected for logo in logos), str(path)
+        assert all(logo["src"] in {expected, dark} for logo in logos), str(path)
         assert soup.select_one(".theme-icon-active img")["src"] == expected
         pages.append(str(path.relative_to(ROOT)))
     assert pages

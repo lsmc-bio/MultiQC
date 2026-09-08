@@ -201,12 +201,17 @@ def load_presentation() -> dict:
         value = brand[key]
         if value is not None:
             brand[key] = _asset(value, base)
-    default_mark = _asset("assets/img/lsmc-logo.png", ASSETS)
+    default_mark = _asset("assets/img/lsmc-compact-black-transparent.png", ASSETS)
     style["theme_icon"] = default_mark
     if brand["logo"] is None:
         brand["logo"] = _asset(config.custom_logo, Path.cwd()) if config.custom_logo else default_mark
     if brand["logo_dark"] is None:
-        brand["logo_dark"] = _asset(config.custom_logo_dark, Path.cwd()) if config.custom_logo_dark else brand["logo"]
+        if config.custom_logo_dark:
+            brand["logo_dark"] = _asset(config.custom_logo_dark, Path.cwd())
+        elif brand["logo"] == default_mark:
+            brand["logo_dark"] = _asset("assets/img/lsmc-compact-white-transparent.png", ASSETS)
+        else:
+            brand["logo_dark"] = brand["logo"]
     if brand["favicon"] is None:
         brand["favicon"] = _asset(config.custom_favicon, Path.cwd()) if config.custom_favicon else default_mark
     if config.custom_logo_url and not (supplied and "url" in supplied.get("brand", {})):
