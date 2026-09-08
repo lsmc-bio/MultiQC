@@ -125,9 +125,9 @@ def main():
         "MULTIQC_REPORT_STYLE": json.dumps(
             {
                 "brand": {
-                    "logo": str(candidate / "multiqc/templates/default/assets/img/lsmc-mark.png"),
-                    "logo_dark": str(candidate / "multiqc/templates/default/assets/img/lsmc-mark.png"),
-                    "favicon": str(candidate / "multiqc/templates/default/assets/img/lsmc-mark.png"),
+                    "logo": str(candidate / "multiqc/templates/default/assets/img/lsmc-logo.png"),
+                    "logo_dark": str(candidate / "multiqc/templates/default/assets/img/lsmc-logo.png"),
+                    "favicon": str(candidate / "multiqc/templates/default/assets/img/lsmc-logo.png"),
                     "url": None,
                     "alt": "LSMC",
                     "width": 72,

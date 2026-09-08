@@ -7,7 +7,6 @@ import multiqc
 from multiqc.core.update_config import ClConfig
 from multiqc.templates.default import load_dayoa_selector_manifest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -314,7 +313,7 @@ def test_lsmc_compact_logo_is_upper_right_and_print_safe() -> None:
     brand = header[brand_start:brand_end]
     assert brand.index("lsmc-report-kicker") < brand.index("report.presentation.style.brand.logo")
     assert "lsmc-compact-black-transparent.png" not in brand
-    assert (REPO_ROOT / "multiqc/templates/default/assets/img/lsmc-mark.png").is_file()
+    assert (REPO_ROOT / "multiqc/templates/default/assets/img/lsmc-logo.png").is_file()
     assert "justify-content: flex-end;" in styles
     assert 'html[data-theme="lsmc"]:not([data-theme="original"]) .lsmc-native-logo-on-dark' in styles
     assert 'html[data-theme]:not([data-theme="original"]) .lsmc-native-logo-on-light' in styles

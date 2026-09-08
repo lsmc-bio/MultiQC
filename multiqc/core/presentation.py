@@ -201,7 +201,7 @@ def load_presentation() -> dict:
         value = brand[key]
         if value is not None:
             brand[key] = _asset(value, base)
-    default_mark = _asset("assets/img/lsmc-mark.png", ASSETS)
+    default_mark = _asset("assets/img/lsmc-logo.png", ASSETS)
     style["theme_icon"] = default_mark
     if brand["logo"] is None:
         brand["logo"] = _asset(config.custom_logo, Path.cwd()) if config.custom_logo else default_mark
