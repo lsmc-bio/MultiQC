@@ -26,9 +26,11 @@ class MultiqcModule(BaseMultiqcModule):
     and copy-number VCF or BCF callsets.
 
     The module discovers `*.vcf-sv-stats.json` summaries written by `vcf-sv-stats stats`
-    or `vcf-sv-stats run`. It validates the schema, content signature, and RFC 8785 payload
-    digest before displaying any value. The digest is an integrity check, not proof of
-    authorship.
+    or `vcf-sv-stats run`. It validates the schema and content signature before displaying
+    any value. Schema 1.0.0 requires an RFC 8785 payload digest check; schema 1.1.0 explicitly
+    omits content hashing and uses attempt identifiers. Repeated identifiers in that mode
+    are rejected because content equivalence was not measured. A verified digest does not
+    establish authorship.
 
     Report identifiers remain separate from analysis-unit context and VCF sample columns.
     Counts are descriptive callset statistics. They are not precision, recall, concordance,
@@ -50,6 +52,10 @@ class MultiqcModule(BaseMultiqcModule):
             for parsed in parse_summary(f["f"], f["fn"]):
                 previous = records.get(parsed.report_id)
                 if previous is not None:
+                    if previous.hash_policy == "not_performed" or parsed.hash_policy == "not_performed":
+                        raise SummaryValidationError(
+                            f"Repeated vcf-sv-stats report identifier without content verification: {parsed.report_id}"
+                        )
                     if previous.summary_payload_sha256 != parsed.summary_payload_sha256:
                         raise SummaryValidationError(f"Conflicting vcf-sv-stats report identifier: {parsed.report_id}")
                     self.duplicate_sources.append(f["fn"])
@@ -64,6 +70,8 @@ class MultiqcModule(BaseMultiqcModule):
                 "validation": parsed.validation,
                 "report": parsed.report,
                 "report_payload_sha256": parsed.payload_sha256,
+                "hash_policy": parsed.hash_policy,
+                "attempt_id": parsed.attempt_id,
             }
             for report_id, parsed in records.items()
         }
@@ -500,6 +508,8 @@ class MultiqcModule(BaseMultiqcModule):
                 "analysis_unit_id": analysis.get("analysis_unit_id") or "Unresolved",
                 "display_id": analysis.get("display_id") or "Unresolved",
                 "algorithm_id": analysis.get("algorithm_id") or "Unresolved",
+                "content_hashing": "Not performed" if parsed.hash_policy == "not_performed" else "Payload verified",
+                "attempt_id": parsed.attempt_id,
                 "vcf_samples": (", ".join(parsed.report["mapped_vcf_sample_ids"]) or "Unmapped"),
             }
         self.add_section(
@@ -507,7 +517,8 @@ class MultiqcModule(BaseMultiqcModule):
             anchor="vcf-sv-stats-provenance",
             description=(
                 "Producer support is provenance, not accuracy evidence. Analysis-unit "
-                "identifiers and mapped VCF sample columns remain separate."
+                "identifiers and mapped VCF sample columns remain separate. Content hashing "
+                "is shown explicitly; attempt identifiers do not establish byte identity."
             ),
             plot=table.plot(
                 data,
@@ -519,6 +530,8 @@ class MultiqcModule(BaseMultiqcModule):
                     "analysis_unit_id": {"title": "Analysis unit"},
                     "display_id": {"title": "Display ID"},
                     "algorithm_id": {"title": "Algorithm"},
+                    "content_hashing": {"title": "Content hashing"},
+                    "attempt_id": {"title": "Attempt ID"},
                     "vcf_samples": {"title": "Mapped VCF samples"},
                 },
                 pconfig={

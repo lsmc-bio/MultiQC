@@ -129,7 +129,8 @@ def test_module_renders_exact_six_manifest_model(tmp_path: Path) -> None:
         provenance = module.input_provenance[entity]
         assert provenance["normalized_row_count"] == count
         assert provenance["source_file_count"] == 1
-        assert len(provenance["normalized_rows_sha256"]) == 64
+        assert provenance["normalized_rows_sha256"] is None
+        assert provenance["hash_policy"] == "not_performed"
     anchors = {section.anchor for section in module.sections}
     assert {
         "snakemake-samples-specimens",

@@ -1,5 +1,3 @@
-import hashlib
-import json
 import logging
 import os
 from typing import Callable, Dict, List, Mapping, Optional, Tuple
@@ -318,14 +316,14 @@ class MultiqcModule(BaseMultiqcModule):
     def _manifest_provenance(
         cls, files: List[LoadedFileDict[str]], rows: Mapping[str, Mapping[str, str]]
     ) -> Dict[str, object]:
-        canonical_json = json.dumps(rows, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return {
             "source_paths": sorted(cls._source_path(source) for source in files),
             "source_file_count": len(files),
             "source_row_counts": [len(rows) for _source in files],
             "normalized_row_count": len(rows),
             "normalized_keys": sorted(rows),
-            "normalized_rows_sha256": hashlib.sha256(canonical_json.encode("utf-8")).hexdigest(),
+            "normalized_rows_sha256": None,
+            "hash_policy": "not_performed",
             "reconciliation_status": "exact",
         }
 

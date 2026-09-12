@@ -1,5 +1,6 @@
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,6 +47,26 @@ SUMMARY_SCHEMA: dict[str, Any] = {
     },
 }
 
+NO_CONTENT_HASH_SCHEMA = deepcopy(SUMMARY_SCHEMA)
+NO_CONTENT_HASH_SCHEMA["$id"] = "urn:vcf-sv-stats:schema:summary:1.1.0"
+NO_CONTENT_HASH_SCHEMA["required"].extend(["hash_policy", "attempt_id"])
+NO_CONTENT_HASH_SCHEMA["properties"].update(
+    {
+        "schema_version": {"const": "1.1.0"},
+        "hash_policy": {"const": "not_performed"},
+        "attempt_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        },
+        "input": {
+            "type": "object",
+            "required": ["sha256", "size_bytes", "container", "display_name", "complete"],
+            "properties": {"sha256": {"type": "null"}},
+        },
+        "payload_sha256": {"type": "null"},
+    }
+)
+
 
 class SummaryValidationError(ValueError):
     pass
@@ -54,8 +75,10 @@ class SummaryValidationError(ValueError):
 @dataclass(frozen=True)
 class ParsedReport:
     report_id: str
-    summary_payload_sha256: str
-    payload_sha256: str
+    summary_payload_sha256: str | None
+    payload_sha256: str | None
+    hash_policy: str
+    attempt_id: str | None
     producer_version: str
     callset: dict[str, Any]
     validation: dict[str, Any]
@@ -180,24 +203,29 @@ def _parse_summary(content: str, source_name: str) -> tuple[ParsedReport, ...]:
         raise SummaryValidationError(f"Invalid schema version in {source_name}") from exc
     if major != 1:
         raise SummaryValidationError(f"Unsupported summary schema major in {source_name}")
-    if version != "1.0.0":
+    if version not in {"1.0.0", "1.1.0"}:
         raise SummaryValidationError(f"Unsupported summary schema version in {source_name}")
+    no_content_hash = version == "1.1.0"
     try:
-        jsonschema.Draft202012Validator(SUMMARY_SCHEMA).validate(payload)
+        jsonschema.Draft202012Validator(NO_CONTENT_HASH_SCHEMA if no_content_hash else SUMMARY_SCHEMA).validate(payload)
     except jsonschema.ValidationError as exc:
         raise SummaryValidationError(f"Summary schema validation failed in {source_name}") from exc
 
     expected_digest = payload["payload_sha256"]
-    digest_payload = dict(payload)
-    digest_payload.pop("payload_sha256")
-    digest_payload.pop("execution", None)
-    observed_digest = hashlib.sha256(rfc8785.dumps(digest_payload)).hexdigest()
-    if expected_digest != observed_digest:
-        raise SummaryValidationError(f"Summary payload digest does not match in {source_name}")
+    attempt_id = payload["attempt_id"] if no_content_hash else None
+    if not no_content_hash:
+        digest_payload = dict(payload)
+        digest_payload.pop("payload_sha256")
+        digest_payload.pop("execution", None)
+        observed_digest = hashlib.sha256(rfc8785.dumps(digest_payload)).hexdigest()
+        if expected_digest != observed_digest:
+            raise SummaryValidationError(f"Summary payload digest does not match in {source_name}")
 
     producer = mapping(payload["producer"], "producer")
     producer_version = non_empty_string(producer["version"], "producer.version")
     callset = mapping(payload["callset"], "callset")
+    if no_content_hash and callset["callset_id"] != f"attempt:{attempt_id}":
+        raise SummaryValidationError(f"Callset identifier does not match attempt in {source_name}")
     callset_producer = mapping(callset["producer"], "callset.producer")
     for field in ("adapter_id", "producer", "status"):
         non_empty_string(callset_producer[field], f"callset.producer.{field}")
@@ -228,6 +256,8 @@ def _parse_summary(content: str, source_name: str) -> tuple[ParsedReport, ...]:
     for index, raw_report in enumerate(reports):
         report = mapping(raw_report, f"reports[{index}]")
         report_id = non_empty_string(report["report_id"], f"reports[{index}].report_id")
+        if no_content_hash and report_id != f"vss1-attempt-{attempt_id}-{index}":
+            raise SummaryValidationError(f"Report identifier does not match attempt and ordinal in {source_name}")
         if report_id in seen_ids:
             raise SummaryValidationError(f"Duplicate report identifier in {source_name}")
         seen_ids.add(report_id)
@@ -240,12 +270,14 @@ def _parse_summary(content: str, source_name: str) -> tuple[ParsedReport, ...]:
             raise SummaryValidationError(f"reports[{index}].mapped_vcf_sample_ids must be a string array")
         statistics = mapping(report["statistics"], f"reports[{index}].statistics")
         _validate_statistics(statistics, f"reports[{index}].statistics")
-        report_digest = hashlib.sha256(rfc8785.dumps(report)).hexdigest()
+        report_digest = None if no_content_hash else hashlib.sha256(rfc8785.dumps(report)).hexdigest()
         parsed.append(
             ParsedReport(
                 report_id=report_id,
                 summary_payload_sha256=expected_digest,
                 payload_sha256=report_digest,
+                hash_policy="not_performed" if no_content_hash else "verified",
+                attempt_id=attempt_id,
                 producer_version=producer_version,
                 callset=callset,
                 validation=validation,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "multiqc"
-version = "1.36dev"
+version = "1.36.0"
 dependencies = [
     "bleach>=6.2",
     "beautifulsoup4>=4.12",
