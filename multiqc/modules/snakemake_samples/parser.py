@@ -1,6 +1,7 @@
 import csv
 import json
 import math
+import re
 from collections import defaultdict
 from io import StringIO
 from typing import Dict, List, Mapping, Optional, Tuple, Union
@@ -90,9 +91,12 @@ ENTITY_REQUIRED_COLUMNS = {
 ANALYSIS_UNIT_INPUT_REQUIRED_COLUMNS = frozenset({"ANALYSIS_UNIT_UID", "SEQUENCING_INPUT_UID", "ROLE", "INPUT_ORDINAL"})
 INPUT_ROLES = frozenset({"sr", "lr"})
 INPUT_LAYOUTS = frozenset({"paired_fastq", "single_fastq", "aligned_bam", "aligned_cram", "vcf"})
+DIRECT_SAMPLE_PROVENANCE = frozenset({"ultima_native_run_sample", "derived_sample_dataset"})
 
 
-def parse_tsv(text: Optional[str], filename: str, label: str) -> Tuple[List[str], List[Dict[str, str]]]:
+def parse_tsv(
+    text: Optional[str], filename: str, label: str, *, allow_empty: bool = False
+) -> Tuple[List[str], List[Dict[str, str]]]:
     if text is None:
         raise ValueError(f"Could not read {label} TSV: {filename}")
     reader = csv.DictReader(StringIO(text), delimiter="\t")
@@ -110,13 +114,13 @@ def parse_tsv(text: Optional[str], filename: str, label: str) -> Tuple[List[str]
         if missing:
             raise ValueError(f"{label} TSV line {line_number} has fewer fields than its header: {filename}")
         rows.append({column: str(raw_row[column]) for column in fieldnames})
-    if not rows:
+    if not rows and not allow_empty:
         raise ValueError(f"{label} TSV has no data rows: {filename}")
     return fieldnames, rows
 
 
 def _parse_entity(text: Optional[str], filename: str, label: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    fieldnames, rows = parse_tsv(text, filename, label)
+    fieldnames, rows = parse_tsv(text, filename, label, allow_empty=label == "libraries")
     required = ENTITY_REQUIRED_COLUMNS[label]
     missing = sorted(required - set(fieldnames))
     if missing:
@@ -124,7 +128,10 @@ def _parse_entity(text: Optional[str], filename: str, label: str) -> Tuple[List[
     key_field = ENTITY_KEYS[label]
     parsed: Dict[str, Dict[str, str]] = {}
     for line_number, row in enumerate(rows, start=2):
-        blank = sorted(column for column in required if not row[column].strip())
+        row_required = required
+        if label == "sequencing inputs" and input_provenance_kind(row) in DIRECT_SAMPLE_PROVENANCE:
+            row_required = required - {"LIBRARY_ID"}
+        blank = sorted(column for column in row_required if not row[column].strip())
         if blank:
             raise ValueError(f"{filename} line {line_number} has blank required column(s) " + ", ".join(blank))
         key = row[key_field].strip()
@@ -145,8 +152,50 @@ def _parse_entity(text: Optional[str], filename: str, label: str) -> Tuple[List[
                 raise ValueError(
                     f"{filename} line {line_number} LAYOUT must be one of {sorted(INPUT_LAYOUTS)}; observed {layout!r}"
                 )
+            validate_input_provenance(normalized, filename)
         parsed[key] = normalized
     return fieldnames, parsed
+
+
+def input_provenance_kind(row: Mapping[str, str]) -> str:
+    # DayOA's existing physical-library contract permits an omitted discriminator.
+    kind = row.get("SOURCE_PROVENANCE_KIND", "") or "physical_library"
+    if kind not in {"physical_library", *DIRECT_SAMPLE_PROVENANCE}:
+        raise ValueError(f"Unsupported sequencing-input SOURCE_PROVENANCE_KIND: {kind!r}")
+    return kind
+
+
+def validate_input_provenance(row: Mapping[str, str], filename: str) -> None:
+    kind = input_provenance_kind(row)
+    label = f"{filename} input {row['SEQUENCING_INPUT_UID']!r}"
+    if kind == "physical_library":
+        if not row["LIBRARY_ID"] or row.get("SAMPLEID", "") or row.get("NATIVE_POOL_ID", ""):
+            raise ValueError(f"{label} requires a physical library and no direct sample/pool identity")
+    else:
+        if row["LIBRARY_ID"] or not row.get("SAMPLEID", "").strip():
+            raise ValueError(f"{label} requires direct SAMPLEID and empty LIBRARY_ID")
+        if kind == "ultima_native_run_sample":
+            if (row["MODALITY"], row["LAYOUT"]) != ("sr", "aligned_cram"):
+                raise ValueError(f"{label} native Ultima input must be sr/aligned_cram")
+            for field in ("NATIVE_POOL_ID", "RUNID"):
+                if not row.get(field, "").strip() or row[field] != row[field].strip():
+                    raise ValueError(f"{label} requires exact nonblank {field}")
+        else:
+            if row.get("NATIVE_POOL_ID", "") or (row["MODALITY"], row["LAYOUT"]) not in {
+                ("sr", "paired_fastq"), ("sr", "single_fastq"),
+                ("sr", "aligned_cram"), ("lr", "aligned_cram"),
+            }:
+                raise ValueError(f"{label} has invalid derived-dataset modality/layout or pool identity")
+            if not row.get("SOURCE_DATASET_ID", "").strip():
+                raise ValueError(f"{label} requires SOURCE_DATASET_ID")
+            if re.fullmatch(r"s3://[^/\s]+/[^\s]+", row.get("SOURCE_DATASET_URI", "")) is None:
+                raise ValueError(f"{label} requires exact SOURCE_DATASET_URI")
+            if re.fullmatch(r"[0-9a-f]{64}", row.get("SOURCE_DATASET_SHA256", "")) is None:
+                raise ValueError(f"{label} requires SOURCE_DATASET_SHA256")
+    if kind != "derived_sample_dataset" and any(
+        row.get(field, "") for field in ("SOURCE_DATASET_ID", "SOURCE_DATASET_URI", "SOURCE_DATASET_SHA256")
+    ):
+        raise ValueError(f"{label} dataset provenance requires derived_sample_dataset")
 
 
 def parse_specimens(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
@@ -240,7 +289,18 @@ def validate_manifest_lineage(
         raise ValueError(
             "libraries.tsv references SAMPLEID values absent from samples.tsv: " + ", ".join(unknown_library_samples)
         )
-    unknown_input_libraries = sorted({row["LIBRARY_ID"].strip() for row in sequencing_inputs.values()} - set(libraries))
+    physical_inputs = [
+        row for row in sequencing_inputs.values() if input_provenance_kind(row) == "physical_library"
+    ]
+    direct_inputs = [
+        row for row in sequencing_inputs.values() if input_provenance_kind(row) in DIRECT_SAMPLE_PROVENANCE
+    ]
+    if not libraries and physical_inputs:
+        raise ValueError("Header-only libraries.tsv requires direct sample provenance for every sequencing input")
+    unknown_direct_samples = sorted({row["SAMPLEID"] for row in direct_inputs} - set(samples))
+    if unknown_direct_samples:
+        raise ValueError(f"sequencing_inputs.tsv references unknown SAMPLEID values: {unknown_direct_samples}")
+    unknown_input_libraries = sorted({row["LIBRARY_ID"].strip() for row in physical_inputs} - set(libraries))
     if unknown_input_libraries:
         raise ValueError(
             "sequencing_inputs.tsv references LIBRARY_ID values absent from libraries.tsv: "
@@ -264,7 +324,7 @@ def validate_manifest_lineage(
             "analysis_unit_inputs.tsv references unknown SEQUENCING_INPUT_UID values: " + ", ".join(unknown_inputs)
         )
     for label, expected, observed in (
-        ("library", set(libraries), {row["LIBRARY_ID"] for row in sequencing_inputs.values()}),
+        ("library", set(libraries), {row["LIBRARY_ID"] for row in physical_inputs}),
         ("sequencing input", set(sequencing_inputs), linked_inputs),
         ("analysis unit", set(analysis_units), linked_units),
     ):
@@ -275,12 +335,15 @@ def validate_manifest_lineage(
         unit_uid = link["ANALYSIS_UNIT_UID"]
         input_uid = link["SEQUENCING_INPUT_UID"]
         sequencing_input = sequencing_inputs[input_uid]
-        library = libraries[sequencing_input["LIBRARY_ID"]]
+        if input_provenance_kind(sequencing_input) in DIRECT_SAMPLE_PROVENANCE:
+            input_sample = sequencing_input["SAMPLEID"]
+        else:
+            input_sample = libraries[sequencing_input["LIBRARY_ID"]]["SAMPLEID"]
         unit_sample = analysis_units[unit_uid]["SAMPLEID"]
-        if library["SAMPLEID"] != unit_sample:
+        if input_sample != unit_sample:
             raise ValueError(
                 f"analysis unit {unit_uid!r} selects input {input_uid!r} from sample "
-                f"{library['SAMPLEID']!r}, not declared sample {unit_sample!r}"
+                f"{input_sample!r}, not declared sample {unit_sample!r}"
             )
         if sequencing_input["MODALITY"] != link["ROLE"]:
             raise ValueError(
@@ -302,12 +365,20 @@ def resolve_analysis_units(
     for unit_uid, unit in analysis_units.items():
         links = links_by_unit[unit_uid]
         input_rows = [sequencing_inputs[link["SEQUENCING_INPUT_UID"]] for link in links]
-        library_ids = list(dict.fromkeys(row["LIBRARY_ID"] for row in input_rows))
+        library_ids = list(dict.fromkeys(row["LIBRARY_ID"] for row in input_rows if row["LIBRARY_ID"]))
         library_euids = [libraries[library_id].get("LIBRARY_EUID", "") for library_id in library_ids]
+        provenance_kinds = [input_provenance_kind(row) for row in input_rows]
         resolved[unit_uid] = {
             **unit,
+            "PHYSICAL_LIBRARY_STATUS": (
+                "unknown" if any(kind in DIRECT_SAMPLE_PROVENANCE for kind in provenance_kinds) else "resolved"
+            ),
             "SELECTED_LIBRARY_IDS": json.dumps(library_ids, separators=(",", ":")),
             "SELECTED_LIBRARY_EUIDS": json.dumps(library_euids, separators=(",", ":")),
+            "SELECTED_INPUT_LIBRARY_IDS": json.dumps(
+                [row["LIBRARY_ID"] or None for row in input_rows], separators=(",", ":")
+            ),
+            "SELECTED_INPUT_SOURCE_PROVENANCE_KINDS": json.dumps(provenance_kinds, separators=(",", ":")),
             "SELECTED_SEQUENCING_INPUT_UIDS": json.dumps(
                 [link["SEQUENCING_INPUT_UID"] for link in links], separators=(",", ":")
             ),

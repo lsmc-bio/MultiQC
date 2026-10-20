@@ -49,6 +49,12 @@ class MultiqcModule(BaseMultiqcModule):
     ordered library, input, role, modality, and layout arrays derived solely
     from this join.
 
+    Explicit `derived_sample_dataset` and `ultima_native_run_sample` inputs
+    link directly to `SAMPLEID` and leave `LIBRARY_ID` empty. Their physical
+    library identity remains unknown; `libraries.tsv` may contain only its
+    header when every input has direct sample provenance. No library is
+    synthesized from a source pool or a downsampled dataset.
+
     The optional `reported_vs_inferred_sex_check_mqc.tsv` retains sex-check
     evidence. The optional `hybrid_seq_batch_qc.tsv` has one schema version 1
     row for every `analysis_units.tsv` row. Required columns are:

@@ -235,9 +235,23 @@ def load_dayoa_selector_manifest(path: str) -> Dict[str, Any]:
                 f"{manifest_path}"
             )
         if record["selector_eligible"] and not library_ids:
-            raise ValueError(
-                f"DayOA selector record {index} must declare at least one physical library: {manifest_path}"
-            )
+            kinds = record.get("INPUT_SOURCE_PROVENANCE_KINDS")
+            inputs = record["SEQUENCING_INPUT_UIDS"]
+            input_libraries = record["INPUT_LIBRARY_IDS"]
+            if (
+                record.get("PHYSICAL_LIBRARY_STATUS") != "unknown"
+                or not isinstance(kinds, list)
+                or not kinds
+                or not isinstance(inputs, list)
+                or len(kinds) != len(inputs)
+                or not isinstance(input_libraries, list)
+                or input_libraries != [None] * len(kinds)
+                or any(kind not in {"ultima_native_run_sample", "derived_sample_dataset"} for kind in kinds)
+            ):
+                raise ValueError(
+                    f"DayOA selector record {index} without a physical library requires explicit direct sample "
+                    f"provenance and unknown physical-library status: {manifest_path}"
+                )
         singular_library_euid = record["LIBRARY_EUID"]
         if singular_library_euid is not None and (
             not isinstance(singular_library_euid, str) or not singular_library_euid.strip()

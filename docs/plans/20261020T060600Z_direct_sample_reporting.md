@@ -1,0 +1,9 @@
+# Direct sample provenance in native DayOA reports
+
+Current continuation: source repair prepared on codex/multiqc-direct-sample-20261020 from annotated1.36.0/8b463e7f0537d233eeb873cb14451f57394be454. Human requested fixing/restarting six ILMN+ONT final reporting and previously authorized commit/push/annotated tags for changes needed to run this campaign. No tests, lint, CI or container builds authorized or run. Controlling ledger remains the HG002 three-platform ledger in the DYEC evidence checkout.
+
+Live evidence: named existing six-AU capsule hg002-hybrid-sixau-20261019t135400z; direct attempt d02a297e-6bd5-4210-9134-fc40d412ca75. Selector stage nowPASS after DayOA19.0.40 correction. Final MultiQC1.36.0 fails with ValueError: libraries TSV has no data rows: libraries.tsv. Six downstream Inflection reports are UPSTREAM_NOT_PASS. Engine0/0/0 is not report completion.
+
+The source correction permits a header-only libraries manifest only when every sequencing input explicitly declares direct sample provenance. It validates recognized provenance, direct SAMPLEID, absent physical library, modality/layout and source dataset metadata; lineage uses the direct sample parent. Resolved AU rows retain empty physical-library arrays, null ordered input libraries and unknown status. The report template accepts library-free selector rows only with explicit direct provenance and unknown status. Existing physical-library links remain required and checked. No source IDs, inferred libraries or biological identities are generated.
+
+Release1.36.1 is a dependency publication with validation_pending. A new DayOA environment YAML will pin this immutable tag and be used for the reporting-only same-capsule dry/live recovery. Existing versioned YAMLs and shared installed environments remain unchanged. Live native reporting and all seven actual HTML artifacts are the validation gate; this document does not assert they have passed.
