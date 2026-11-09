@@ -1,4 +1,6 @@
 import json
+import csv
+from io import StringIO
 
 import pytest
 
@@ -45,13 +47,18 @@ GENDER = (
 )
 
 
+def record_rows(text):
+    """Compact fixture notation only; production parsers receive JSON records."""
+    return list(csv.DictReader(StringIO(text), delimiter="\t"))
+
+
 def parsed_contract():
-    _, specimens = parse_specimens(SPECIMENS, "specimens.tsv")
-    _, samples = parse_samples(SAMPLES, "samples.tsv")
-    _, libraries = parse_libraries(LIBRARIES, "libraries.tsv")
-    _, sequencing_inputs = parse_sequencing_inputs(SEQUENCING_INPUTS, "sequencing_inputs.tsv")
-    _, analysis_units = parse_analysis_units(ANALYSIS_UNITS, "analysis_units.tsv")
-    _, links = parse_analysis_unit_inputs(ANALYSIS_UNIT_INPUTS, "analysis_unit_inputs.tsv")
+    _, specimens = parse_specimens(record_rows(SPECIMENS), "controller JSON specimens")
+    _, samples = parse_samples(record_rows(SAMPLES), "controller JSON samples")
+    _, libraries = parse_libraries(record_rows(LIBRARIES), "controller JSON libraries")
+    _, sequencing_inputs = parse_sequencing_inputs(record_rows(SEQUENCING_INPUTS), "controller JSON sequencing_inputs")
+    _, analysis_units = parse_analysis_units(record_rows(ANALYSIS_UNITS), "controller JSON analysis_units")
+    _, links = parse_analysis_unit_inputs(record_rows(ANALYSIS_UNIT_INPUTS), "controller JSON analysis_unit_inputs")
     validate_manifest_lineage(specimens, samples, libraries, sequencing_inputs, analysis_units, links)
     return specimens, samples, libraries, sequencing_inputs, analysis_units, links
 
@@ -90,7 +97,7 @@ def hybrid_text(**overrides: str) -> str:
     )
 
 
-def test_parses_exact_six_manifest_grains_and_resolves_ordered_inputs() -> None:
+def test_parses_controller_record_grains_and_resolves_ordered_inputs() -> None:
     specimens, samples, libraries, sequencing_inputs, analysis_units, links = parsed_contract()
     assert list(specimens) == ["SP1"]
     assert list(samples) == ["S1"]
@@ -127,7 +134,7 @@ def test_parses_exact_six_manifest_grains_and_resolves_ordered_inputs() -> None:
 def test_old_library_as_analysis_unit_shape_is_rejected() -> None:
     old = "ANALYSIS_UNIT_UID\tSAMPLEID\nAU-1\tS1\n"
     with pytest.raises(ValueError, match="missing required column.*LIBRARY_ID"):
-        parse_libraries(old, "libraries.tsv")
+        parse_libraries(record_rows(old), "controller JSON libraries")
 
 
 @pytest.mark.parametrize(
@@ -149,63 +156,63 @@ def test_parse_tsv_rejects_malformed_inputs(text, message) -> None:
 @pytest.mark.parametrize(
     ("text", "parser", "filename", "message"),
     [
-        (SPECIMENS + "SP1\tZ-OTHER\tmale\n", parse_specimens, "specimens.tsv", "duplicate SPECIMEN_ID"),
-        (SAMPLES + "S1\tZ-OTHER\tSP1\n", parse_samples, "samples.tsv", "duplicate SAMPLEID"),
-        (LIBRARIES + "LIB-LR\tZ-OTHER\tS1\n", parse_libraries, "libraries.tsv", "duplicate LIBRARY_ID"),
+        (SPECIMENS + "SP1\tZ-OTHER\tmale\n", parse_specimens, "controller JSON specimens", "duplicate SPECIMEN_ID"),
+        (SAMPLES + "S1\tZ-OTHER\tSP1\n", parse_samples, "controller JSON samples", "duplicate SAMPLEID"),
+        (LIBRARIES + "LIB-LR\tZ-OTHER\tS1\n", parse_libraries, "controller JSON libraries", "duplicate LIBRARY_ID"),
         (
             SEQUENCING_INPUTS + "INPUT-LR\tLIB-LR\tlr\tsingle_fastq\n",
             parse_sequencing_inputs,
-            "sequencing_inputs.tsv",
+            "controller JSON sequencing_inputs",
             "duplicate SEQUENCING_INPUT_UID",
         ),
         (
             ANALYSIS_UNITS + f"{UNIT_UID}\tZ-OTHER\tS1\n",
             parse_analysis_units,
-            "analysis_units.tsv",
+            "controller JSON analysis_units",
             "duplicate ANALYSIS_UNIT_UID",
         ),
     ],
 )
 def test_duplicate_entity_keys_fail(text, parser, filename, message) -> None:
     with pytest.raises(ValueError, match=message):
-        parser(text, filename)
+        parser(record_rows(text), filename)
 
 
 def test_join_requires_exact_contiguous_order_and_unique_input_selection() -> None:
     with pytest.raises(ValueError, match="exact contiguous order"):
         parse_analysis_unit_inputs(
-            ANALYSIS_UNIT_INPUTS.replace("\tsr\t2\n", "\tsr\t3\n", 1),
-            "analysis_unit_inputs.tsv",
+            record_rows(ANALYSIS_UNIT_INPUTS.replace("\tsr\t2\n", "\tsr\t3\n", 1)),
+            "controller JSON analysis_unit_inputs",
         )
     with pytest.raises(ValueError, match="more than once"):
         parse_analysis_unit_inputs(
-            ANALYSIS_UNIT_INPUTS.replace("INPUT-SR-B", "INPUT-SR-A"),
-            "analysis_unit_inputs.tsv",
+            record_rows(ANALYSIS_UNIT_INPUTS.replace("INPUT-SR-B", "INPUT-SR-A")),
+            "controller JSON analysis_unit_inputs",
         )
     with pytest.raises(ValueError, match="missing required column"):
         parse_analysis_unit_inputs(
-            "ANALYSIS_UNIT_UID\tSEQUENCING_INPUT_UID\tROLE\nAU-1\tI-1\tsr\n",
-            "analysis_unit_inputs.tsv",
+            record_rows("ANALYSIS_UNIT_UID\tSEQUENCING_INPUT_UID\tROLE\nAU-1\tI-1\tsr\n"),
+            "controller JSON analysis_unit_inputs",
         )
     with pytest.raises(ValueError, match="blank required column"):
         parse_analysis_unit_inputs(
-            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\t\t1", 1),
-            "analysis_unit_inputs.tsv",
+            record_rows(ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\t\t1", 1)),
+            "controller JSON analysis_unit_inputs",
         )
     with pytest.raises(ValueError, match="ROLE must be one of"):
         parse_analysis_unit_inputs(
-            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tother\t1", 1),
-            "analysis_unit_inputs.tsv",
+            record_rows(ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tother\t1", 1)),
+            "controller JSON analysis_unit_inputs",
         )
     with pytest.raises(ValueError, match="positive integer"):
         parse_analysis_unit_inputs(
-            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\tbad", 1),
-            "analysis_unit_inputs.tsv",
+            record_rows(ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\tbad", 1)),
+            "controller JSON analysis_unit_inputs",
         )
     with pytest.raises(ValueError, match="canonical positive integer"):
         parse_analysis_unit_inputs(
-            ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\t01", 1),
-            "analysis_unit_inputs.tsv",
+            record_rows(ANALYSIS_UNIT_INPUTS.replace("\tsr\t1", "\tsr\t01", 1)),
+            "controller JSON analysis_unit_inputs",
         )
 
 
@@ -220,7 +227,7 @@ def test_sequencing_input_literals_are_exact(column: str, bad_value: str) -> Non
     values[columns.index(column)] = bad_value
     invalid = fieldnames + "\n" + "\t".join(values) + "\n"
     with pytest.raises(ValueError, match=rf"{column} must be one of"):
-        parse_sequencing_inputs(invalid, "sequencing_inputs.tsv")
+        parse_sequencing_inputs(record_rows(invalid), "controller JSON sequencing_inputs")
 
 
 def test_lineage_rejects_role_modality_and_cross_sample_conflicts() -> None:
@@ -253,9 +260,9 @@ def test_lineage_rejects_role_modality_and_cross_sample_conflicts() -> None:
 
 def test_lineage_rejects_orphans_and_unselected_entities() -> None:
     specimens, samples, libraries, sequencing_inputs, analysis_units, links = parsed_contract()
-    with pytest.raises(ValueError, match="absent from specimens.tsv"):
+    with pytest.raises(ValueError, match="absent from controller JSON specimens"):
         validate_manifest_lineage({}, samples, libraries, sequencing_inputs, analysis_units, links)
-    with pytest.raises(ValueError, match="absent from libraries.tsv"):
+    with pytest.raises(ValueError, match="absent from controller JSON libraries"):
         validate_manifest_lineage(
             specimens,
             samples,
@@ -328,7 +335,7 @@ def test_gender_checks_match_samples_and_specimen_provenance() -> None:
     validate_gender_samples(specimens, samples, gender)
 
     _, mismatched = parse_gender_checks(GENDER.replace("S1\tfemale", "S1\tmale"), "gender.tsv")
-    with pytest.raises(ValueError, match="does not match specimens.tsv"):
+    with pytest.raises(ValueError, match="does not match controller JSON specimens"):
         validate_gender_samples(specimens, samples, mismatched)
     with pytest.raises(ValueError, match="must contain BIOLOGICAL_SEX"):
         validate_gender_samples({"SP1": {"SPECIMEN_ID": "SP1"}}, samples, gender)
@@ -378,7 +385,7 @@ def test_hybrid_rejects_wrong_sample_and_unknown_units() -> None:
     specimens, samples, _libraries, _inputs, analysis_units, _links = parsed_contract()
     _, gender = parse_gender_checks(GENDER, "gender.tsv")
     _, wrong_sample = parse_hybrid_qc(hybrid_text(sample_id="OTHER"), "hybrid.tsv")
-    with pytest.raises(ValueError, match="does not match analysis_units.tsv"):
+    with pytest.raises(ValueError, match="does not match controller JSON analysis_units"):
         evaluate_hybrid_qc(wrong_sample, analysis_units, specimens, samples, gender)
     _, unknown = parse_hybrid_qc(hybrid_text(analysis_unit_uid="AU-OTHER"), "hybrid.tsv")
     with pytest.raises(ValueError, match="unknown analysis units"):

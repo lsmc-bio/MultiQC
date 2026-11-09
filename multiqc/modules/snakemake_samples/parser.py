@@ -119,8 +119,39 @@ def parse_tsv(
     return fieldnames, rows
 
 
-def _parse_entity(text: Optional[str], filename: str, label: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    fieldnames, rows = parse_tsv(text, filename, label, allow_empty=label == "libraries")
+def parse_controller_inputs(text: Optional[str], filename: str):
+    """Read the sole controller JSON; retain every original type and field."""
+    document = json.loads(text)
+    if document["schema_version"] != "dayoa.analysis_inputs.v1":
+        raise ValueError(f"Unsupported controller input schema: {filename}")
+    if document["kind"] not in {"analysis", "run_qc"}:
+        raise ValueError(f"Unsupported controller input kind: {filename}")
+    return document
+
+
+def configuration_rows(document, collection):
+    """Project display/computation cells without altering the exported document."""
+    def cell(value):
+        if isinstance(value, dict) and set(value) == {"$ref"}:
+            pointer = value["$ref"]
+            if not isinstance(pointer, str) or not pointer.startswith("#/"):
+                raise ValueError("Controller locations require local JSON pointers")
+            value = document
+            for part in pointer[2:].split("/"):
+                part = part.replace("~1", "/").replace("~0", "~")
+                value = value[int(part)] if isinstance(value, list) else value[part]
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return [{key: cell(value) for key, value in row.items()} for row in document[collection]]
+
+
+def _parse_entity(rows: List[Dict[str, str]], filename: str, label: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    fieldnames = list(dict.fromkeys(field for row in rows for field in row))
+    if not rows:
+        return fieldnames, {}
     required = ENTITY_REQUIRED_COLUMNS[label]
     missing = sorted(required - set(fieldnames))
     if missing:
@@ -198,28 +229,30 @@ def validate_input_provenance(row: Mapping[str, str], filename: str) -> None:
         raise ValueError(f"{label} dataset provenance requires derived_sample_dataset")
 
 
-def parse_specimens(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    return _parse_entity(text, filename, "specimens")
+def parse_specimens(rows: List[Dict[str, str]], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_entity(rows, filename, "specimens")
 
 
-def parse_samples(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    return _parse_entity(text, filename, "samples")
+def parse_samples(rows: List[Dict[str, str]], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_entity(rows, filename, "samples")
 
 
-def parse_libraries(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    return _parse_entity(text, filename, "libraries")
+def parse_libraries(rows: List[Dict[str, str]], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_entity(rows, filename, "libraries")
 
 
-def parse_sequencing_inputs(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    return _parse_entity(text, filename, "sequencing inputs")
+def parse_sequencing_inputs(rows: List[Dict[str, str]], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_entity(rows, filename, "sequencing inputs")
 
 
-def parse_analysis_units(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    return _parse_entity(text, filename, "analysis units")
+def parse_analysis_units(rows: List[Dict[str, str]], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    return _parse_entity(rows, filename, "analysis units")
 
 
-def parse_analysis_unit_inputs(text: Optional[str], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
-    fieldnames, rows = parse_tsv(text, filename, "analysis unit inputs")
+def parse_analysis_unit_inputs(rows: List[Dict[str, str]], filename: str) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
+    fieldnames = list(dict.fromkeys(field for row in rows for field in row))
+    if not rows:
+        return fieldnames, {}
     missing = sorted(ANALYSIS_UNIT_INPUT_REQUIRED_COLUMNS - set(fieldnames))
     if missing:
         raise ValueError(f"{filename} is missing required column(s) {', '.join(missing)}")
@@ -281,13 +314,13 @@ def validate_manifest_lineage(
     unknown_specimens = sorted({row["SPECIMEN_ID"].strip() for row in samples.values()} - set(specimens))
     if unknown_specimens:
         raise ValueError(
-            "samples.tsv references SPECIMEN_ID values absent from specimens.tsv: " + ", ".join(unknown_specimens)
+            "controller JSON samples references SPECIMEN_ID values absent from controller JSON specimens: " + ", ".join(unknown_specimens)
         )
     library_sample_ids = {row["SAMPLEID"].strip() for row in libraries.values()}
     unknown_library_samples = sorted(library_sample_ids - set(samples))
     if unknown_library_samples:
         raise ValueError(
-            "libraries.tsv references SAMPLEID values absent from samples.tsv: " + ", ".join(unknown_library_samples)
+            "controller JSON libraries references SAMPLEID values absent from controller JSON samples: " + ", ".join(unknown_library_samples)
         )
     physical_inputs = [
         row for row in sequencing_inputs.values() if input_provenance_kind(row) == "physical_library"
@@ -296,20 +329,20 @@ def validate_manifest_lineage(
         row for row in sequencing_inputs.values() if input_provenance_kind(row) in DIRECT_SAMPLE_PROVENANCE
     ]
     if not libraries and physical_inputs:
-        raise ValueError("Header-only libraries.tsv requires direct sample provenance for every sequencing input")
+        raise ValueError("Header-only controller JSON libraries requires direct sample provenance for every sequencing input")
     unknown_direct_samples = sorted({row["SAMPLEID"] for row in direct_inputs} - set(samples))
     if unknown_direct_samples:
-        raise ValueError(f"sequencing_inputs.tsv references unknown SAMPLEID values: {unknown_direct_samples}")
+        raise ValueError(f"controller JSON sequencing_inputs references unknown SAMPLEID values: {unknown_direct_samples}")
     unknown_input_libraries = sorted({row["LIBRARY_ID"].strip() for row in physical_inputs} - set(libraries))
     if unknown_input_libraries:
         raise ValueError(
-            "sequencing_inputs.tsv references LIBRARY_ID values absent from libraries.tsv: "
+            "controller JSON sequencing_inputs references LIBRARY_ID values absent from controller JSON libraries: "
             + ", ".join(unknown_input_libraries)
         )
     unknown_unit_samples = sorted({row["SAMPLEID"].strip() for row in analysis_units.values()} - set(samples))
     if unknown_unit_samples:
         raise ValueError(
-            "analysis_units.tsv references SAMPLEID values absent from samples.tsv: " + ", ".join(unknown_unit_samples)
+            "controller JSON analysis_units references SAMPLEID values absent from controller JSON samples: " + ", ".join(unknown_unit_samples)
         )
     linked_units = {row["ANALYSIS_UNIT_UID"].strip() for row in analysis_unit_inputs.values()}
     linked_inputs = {row["SEQUENCING_INPUT_UID"].strip() for row in analysis_unit_inputs.values()}
@@ -317,11 +350,11 @@ def validate_manifest_lineage(
     unknown_inputs = sorted(linked_inputs - set(sequencing_inputs))
     if unknown_units:
         raise ValueError(
-            "analysis_unit_inputs.tsv references unknown ANALYSIS_UNIT_UID values: " + ", ".join(unknown_units)
+            "controller JSON analysis_unit_inputs references unknown ANALYSIS_UNIT_UID values: " + ", ".join(unknown_units)
         )
     if unknown_inputs:
         raise ValueError(
-            "analysis_unit_inputs.tsv references unknown SEQUENCING_INPUT_UID values: " + ", ".join(unknown_inputs)
+            "controller JSON analysis_unit_inputs references unknown SEQUENCING_INPUT_UID values: " + ", ".join(unknown_inputs)
         )
     for label, expected, observed in (
         ("library", set(libraries), {row["LIBRARY_ID"] for row in physical_inputs}),
@@ -425,7 +458,7 @@ def validate_gender_samples(
     gender_checks: Mapping[str, Mapping[str, str]],
 ) -> None:
     if any("BIOLOGICAL_SEX" not in row for row in specimens.values()):
-        raise ValueError("specimens.tsv must contain BIOLOGICAL_SEX when gender checks are present")
+        raise ValueError("controller JSON specimens must contain BIOLOGICAL_SEX when gender checks are present")
     missing = sorted(set(samples) - set(gender_checks))
     unknown = sorted(set(gender_checks) - set(samples))
     if missing or unknown:
@@ -434,7 +467,7 @@ def validate_gender_samples(
             parts.append(f"missing check rows: {', '.join(missing)}")
         if unknown:
             parts.append(f"unknown check rows: {', '.join(unknown)}")
-        raise ValueError("gender check rows must exactly match samples.tsv; " + "; ".join(parts))
+        raise ValueError("gender check rows must exactly match controller JSON samples; " + "; ".join(parts))
     mismatched = sorted(
         sample_id
         for sample_id, row in gender_checks.items()
@@ -443,7 +476,7 @@ def validate_gender_samples(
     )
     if mismatched:
         raise ValueError(
-            "gender check reported_sex_raw does not match specimens.tsv BIOLOGICAL_SEX for: " + ", ".join(mismatched)
+            "gender check reported_sex_raw does not match controller JSON specimens BIOLOGICAL_SEX for: " + ", ".join(mismatched)
         )
 
 
@@ -532,7 +565,7 @@ def evaluate_hybrid_qc(
             parts.append(f"missing analysis units: {', '.join(missing)}")
         if unknown:
             parts.append(f"unknown analysis units: {', '.join(unknown)}")
-        raise ValueError("Hybrid QC rows must exactly match analysis_units.tsv; " + "; ".join(parts))
+        raise ValueError("Hybrid QC rows must exactly match controller JSON analysis_units; " + "; ".join(parts))
 
     evaluated: Dict[str, Dict[str, Value]] = {}
     for unit_uid, row in hybrid_rows.items():
@@ -540,7 +573,7 @@ def evaluate_hybrid_qc(
         unit_sample_id = analysis_units[unit_uid]["SAMPLEID"].strip()
         if sample_id != unit_sample_id:
             raise ValueError(
-                f"Hybrid QC sample_id '{sample_id}' does not match analysis_units.tsv SAMPLEID "
+                f"Hybrid QC sample_id '{sample_id}' does not match controller JSON analysis_units SAMPLEID "
                 f"'{unit_sample_id}' for {unit_uid}"
             )
         gender = gender_checks[sample_id]

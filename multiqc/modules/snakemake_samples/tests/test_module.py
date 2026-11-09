@@ -1,4 +1,6 @@
 import json
+import csv
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -83,11 +85,15 @@ def search_module(path: Path) -> None:
 
 
 def write_manifests(path: Path) -> None:
-    for name, text in MANIFESTS.items():
-        (path / name).write_text(text)
+    document = {"schema_version": "dayoa.analysis_inputs.v1", "kind": "analysis",
+                "runs": [], "sources": [], "settings": {"unused_setting": [1, None, True]},
+                "provenance": {"declared_by": "fixture"}}
+    document.update({name.removesuffix(".tsv"): list(csv.DictReader(StringIO(text), delimiter="\t"))
+                     for name, text in MANIFESTS.items()})
+    (path / "controller_analysis_units_inputs.json").write_text(json.dumps(document))
 
 
-def test_module_renders_exact_six_manifest_model(tmp_path: Path) -> None:
+def test_module_renders_controller_json_model(tmp_path: Path) -> None:
     write_manifests(tmp_path)
     (tmp_path / "reported_vs_inferred_sex_check_mqc.tsv").write_text(GENDER)
 
@@ -159,7 +165,7 @@ def test_hybrid_qc_requires_gender_evidence(tmp_path: Path) -> None:
     (tmp_path / "hybrid_seq_batch_qc.tsv").write_text(hybrid_text())
 
     search_module(tmp_path)
-    with pytest.raises(ValueError, match="requires the six manifests"):
+    with pytest.raises(ValueError, match="requires controller configuration"):
         MultiqcModule()
 
 
@@ -169,24 +175,16 @@ def test_module_reports_no_samples_when_nothing_matches(tmp_path: Path) -> None:
         MultiqcModule()
 
 
-@pytest.mark.parametrize("missing", sorted(MANIFESTS))
-def test_module_requires_complete_six_manifest_set(tmp_path: Path, missing: str) -> None:
-    write_manifests(tmp_path)
-    (tmp_path / missing).unlink()
-
-    search_module(tmp_path)
-    with pytest.raises(ValueError, match=missing):
-        MultiqcModule()
-
 
 def test_module_rejects_conflicting_duplicate_manifest_copies(tmp_path: Path) -> None:
     for directory in (tmp_path / "a", tmp_path / "b"):
         directory.mkdir()
         write_manifests(directory)
-    (tmp_path / "b/samples.tsv").write_text(SAMPLES.replace("Z-SA-1", "Z-SA-2"))
+    config_path = tmp_path / "b/controller_analysis_units_inputs.json"
+    config_path.write_text(config_path.read_text().replace("Z-SA-1", "Z-SA-2"))
 
     search_module(tmp_path)
-    with pytest.raises(ValueError, match="Conflicting normalized samples inputs"):
+    with pytest.raises(ValueError, match="Conflicting controller JSON inputs"):
         MultiqcModule()
 
 
@@ -206,20 +204,10 @@ def test_module_deduplicates_gender_copies_and_rejects_conflicts(tmp_path: Path)
         MultiqcModule()
 
 
-def test_native_patterns_claim_all_six_files_before_custom_content(tmp_path: Path) -> None:
+def test_native_patterns_claim_json_before_custom_content(tmp_path: Path) -> None:
     write_manifests(tmp_path)
-
     reset()
     report.analysis_files = [str(tmp_path)]
     report.search_files(["snakemake_samples", "custom_content"])
-
-    for stem in (
-        "specimens",
-        "samples",
-        "libraries",
-        "sequencing_inputs",
-        "analysis_units",
-        "analysis_unit_inputs",
-    ):
-        assert len(report.files[ModuleId(f"snakemake_samples/{stem}")]) == 1
+    assert len(report.files[ModuleId("snakemake_samples/controller_inputs")]) == 1
     assert not report.files.get(ModuleId("custom_content"))

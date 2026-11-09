@@ -219,6 +219,15 @@ def write_paginated(report_path: Path, env, return_html=False):
         dest = assets / f"{digest}-{src.name}"
         shutil.copy2(src, dest)
         extras[str(src)] = dest
+    companions = []
+    for member in config.report_files:
+        relative = Path(member["path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"Report companion must have a bundle-relative path: {relative}")
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(member["source"], destination)
+        companions.append(destination)
     presentation_path = directory / "presentation.js"
     write_payload(presentation_path, report.presentation)
     manifest = load_dayoa_selector_manifest(config.dayoa_report_selectors) if config.dayoa_report_selectors else None
@@ -285,6 +294,11 @@ def write_paginated(report_path: Path, env, return_html=False):
             content += env.get_template("content.html").render(report=proxy, config=page_cfg)
         content, tables = extract_tables(content)
         parsed = BeautifulSoup(content, "html.parser")
+        # Native modules mark links relative to the report entry. Section pages
+        # live two levels deeper; preserve portable links in either template.
+        for link in parsed.select("a[data-mqc-report-relative]"):
+            link["href"] = url(root / link["data-mqc-report-relative"])
+        content = str(parsed)
         anchors = {element["id"] for element in parsed.select("[id]")}
         plots = {str(key): value for key, value in report.plot_data.items() if str(key) in anchors}
         names = set()
@@ -396,7 +410,7 @@ def write_paginated(report_path: Path, env, return_html=False):
         "scientific_plot_ids": sorted(str(key) for key in report.plot_data),
         "files": [
             {"path": p.relative_to(root).as_posix()}
-            for p in [report_path, *sorted(directory.rglob("*"))]
+            for p in dict.fromkeys([report_path, *sorted(directory.rglob("*")), *companions])
             if p.is_file()
         ],
     }

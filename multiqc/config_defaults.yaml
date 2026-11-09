@@ -32,6 +32,9 @@ report_context_file: null
 report_style_file: null
 report_display_file: null
 report_links: null
+# Explicit local companions, copied into the paginated bundle.
+report_files: []
+dayoa_runtime_context: null
 report_groups: null
 lsmc_service: "qeo"
 lsmc_environment: "production"
