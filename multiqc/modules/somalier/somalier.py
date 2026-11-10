@@ -152,7 +152,8 @@ class MultiqcModule(BaseMultiqcModule):
                 for i, v in enumerate(s):
                     if i != sample_i:
                         try:
-                            parsed_data[s[sample_i]][headers[i]] = float(v)
+                            numeric = float(v)
+                            parsed_data[s[sample_i]][headers[i]] = None if isnan(numeric) or isinf(numeric) else numeric
                         except ValueError:
                             parsed_data[s[sample_i]][headers[i]] = v
         if len(parsed_data) == 0:
@@ -376,6 +377,22 @@ class MultiqcModule(BaseMultiqcModule):
                 "min": 0,
                 "scale": "RdYlGn",
                 "format": "{:,.2f}",
+            },
+            "contamination_charr": {
+                "title": "Somalier contamination (CHARR)",
+                "description": "Somalier single-sample CHARR-like contamination estimate using the matching population-AF sites panel. Raw data retain the fraction; this table displays percent.",
+                "modify": lambda value: value * 100,
+                "suffix": "%",
+                "min": 0,
+                "max": 100,
+                "scale": "RdYlGn-rev",
+                "format": "{:,.3f}",
+            },
+            "contamination_charr_n_sites": {
+                "title": "CHARR usable sites",
+                "description": "Number of sites used for the Somalier contamination estimate. Missing estimates remain unavailable.",
+                "format": "{:,.0f}",
+                "scale": False,
             },
             "X_het": {
                 "title": "HetVar X",

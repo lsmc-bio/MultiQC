@@ -29,3 +29,9 @@ The requested command provenance extension consumes explicit `dayoa_execution_co
 The `dayoa.execution_context.v1` document contains `analysis`, `attempt_id`, `attempt_sequence`, `origin`, `mode`, `command_captured_at`, `requested_command`, optional `dyec_catalog_key`, and `dy_r`, `wrapper`, `workflow_engine` objects. Each command object contains `command` and `argv`. `argv` preserves exact argument boundaries; `command` is its POSIX shell-quoted representation, not the original terminal text. It is invocation provenance, not a terminal success result. Absent catalog provenance is null, never inferred from targets or filenames. Dry and live reports identify their own attempt; historical native status retains previous attempts.
 
 DayOA 22.0.6 produces and stages this file for final WGS and all supported run-QC reports, and names it in analysis manifests. DYEC 24.0.12 passes its selected command key through the wrapper. Source publication and the authorized Ursa native campaign remain separately tracked in the controlling ledger. No pytest, lint, or extra verification campaign was run.
+
+## Somalier contamination (1.37.2)
+
+November 10 scoped request: add contamination only at existing Somalier executions. The native Somalier module now exposes `contamination_charr` as a percent in its table and `contamination_charr_n_sites` as the usable-site count. The normalized dataset keeps the native fraction unchanged. Native nonfinite values remain missing, never zero or a QC disposition. No new Somalier invocation or pass/fail threshold is introduced.
+
+DayOA passes the matching existing sites panel to its existing relate calls and stages their native samples tables. Separate assay records remain separate. QEO2 consumes the normalized native table through its explicit Somalier adapter. Source publication is separate from the pending Ursa campaign. Tests and lint remain off under user policy.
