@@ -335,6 +335,8 @@ snakemake_benchmarks/combined:
   - fn: "rules_benchmark_data_mqc.tsv"
 snakemake_samples/controller_inputs:
   fn: "controller_analysis_units_inputs.json"
+snakemake_samples/execution_context:
+  fn: "dayoa_execution_context.json"
 snakemake_samples/gender_checks:
   fn: "reported_vs_inferred_sex_check_mqc.tsv"
 snakemake_samples/hybrid_qc:

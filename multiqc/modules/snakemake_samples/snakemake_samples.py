@@ -44,6 +44,11 @@ class MultiqcModule(BaseMultiqcModule):
     multiqc_data.json raw data. Entity tables are report projections, never
     alternate scientific configurations. Optional scientific QC result tables
     retain their established report format.
+
+    Optional dayoa_execution_context.json is exported without transformation as
+    multiqc_dayoa_execution_context. It records the attempt, dry/live mode, exact
+    dy-r and expanded workflow-engine argv and shell-quoted commands, and the
+    explicitly supplied DYEC catalog key (null for manual runs without a key).
     """
 
     def __init__(self):
@@ -160,11 +165,30 @@ class MultiqcModule(BaseMultiqcModule):
         self.add_software_version(None)
         self._add_general_stats()
         self._add_sections()
+        execution = None
+        for source in self.find_log_files("snakemake_samples/execution_context"):
+            if source["f"] is None:
+                raise ValueError(f"Empty DayOA execution context: {source['fn']}")
+            parsed_execution = json.loads(source["f"])
+            if parsed_execution["schema_version"] != "dayoa.execution_context.v1":
+                raise ValueError(f"Unsupported DayOA execution context: {source['fn']}")
+            if execution is not None and parsed_execution != execution:
+                raise ValueError("Conflicting DayOA execution contexts in one report")
+            execution = parsed_execution
+        execution_content = ""
+        if execution is not None:
+            execution_content = (
+                "<h4>Execution command</h4><pre>"
+                + html.escape(execution["dy_r"]["command"])
+                + "</pre><details><summary>Command arguments and attempt provenance</summary><pre>"
+                + html.escape(json.dumps(execution, indent=2, ensure_ascii=False))
+                + "</pre></details>"
+            )
         self.add_section(
             name="Complete controller configuration",
             anchor="dayoa-controller-configuration",
             description="Complete typed controller JSON, also exported as the multiqc_dayoa_controller_analysis_units_inputs dataset.",
-            content="<pre>" + html.escape(json.dumps(self.controller_inputs, indent=2, ensure_ascii=False)) + "</pre>",
+            content=execution_content + "<pre>" + html.escape(json.dumps(self.controller_inputs, indent=2, ensure_ascii=False)) + "</pre>",
         )
 
         runtime = config.dayoa_runtime_context
@@ -204,6 +228,8 @@ class MultiqcModule(BaseMultiqcModule):
             self.write_data_file(self.hybrid_data, "multiqc_hybrid_seq_batch_qc")
         self.write_data_file(self.input_provenance, "multiqc_snakemake_samples_input_provenance", data_format="json")
         self.write_data_file(self.controller_inputs, "multiqc_dayoa_controller_analysis_units_inputs", data_format="json")
+        if execution is not None:
+            self.write_data_file(execution, "multiqc_dayoa_execution_context", data_format="json")
         if runtime is not None:
             self.write_data_file(runtime, "multiqc_dayoa_runtime_benchmark_cost", data_format="json")
 
