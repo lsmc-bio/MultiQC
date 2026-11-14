@@ -579,18 +579,17 @@ class MultiqcModule(BaseMultiqcModule):
             )
 
     def somalier_het_check_plot(self):
-        """plot the het_check scatter plot"""
-        # empty dictionary to add sample names, and dictionary of values
+        """Plot heterozygosity, allowing undefined allele balance for declared NTCs."""
         data = {}
+        for sample, metrics in self.somalier_data.items():
+            if "gt_depth_mean" not in metrics or "ab_std" not in metrics:
+                continue
+            deviation = metrics["ab_std"]
+            if deviation is None and metrics.get("dayoa_is_negative_control") == 1:
+                continue
+            data[sample] = {"x": metrics["gt_depth_mean"], "y": deviation}
 
-        # for each sample, and list in self.somalier_data
-        for s_name, d in self.somalier_data.items():
-            # check the sample contains the required columns
-            if "gt_depth_mean" in d and "ab_std" in d:
-                # add sample to dictionary with value as a dictionary of points to plot
-                data[s_name] = {"x": d["gt_depth_mean"], "y": d["ab_std"]}
-
-        if len(data) > 0:
+        if data:
             pconfig = {
                 "id": "somalier_het_check_plot",
                 "title": "Somalier: Sample Observed Heterozygosity",
@@ -601,7 +600,10 @@ class MultiqcModule(BaseMultiqcModule):
 
             self.add_section(
                 name="Heterozygosity",
-                description="Standard deviation of heterozygous allele balance against mean depth.",
+                description=(
+                    "Standard deviation of heterozygous allele balance against mean depth. "
+                    "Declared no-template controls with undefined allele balance are omitted from this plot."
+                ),
                 helptext="A high standard deviation in allele balance suggests contamination.",
                 anchor="somalier-hetcheck",
                 plot=scatter.plot(data, pconfig),
