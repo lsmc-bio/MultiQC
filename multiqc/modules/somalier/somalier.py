@@ -579,17 +579,19 @@ class MultiqcModule(BaseMultiqcModule):
             )
 
     def somalier_het_check_plot(self):
-        """Plot heterozygosity, allowing undefined allele balance for declared NTCs."""
+        """Plot heterozygosity where allele-balance deviation is available."""
         data = {}
+        unavailable = 0
         for sample, metrics in self.somalier_data.items():
             if "gt_depth_mean" not in metrics or "ab_std" not in metrics:
                 continue
             deviation = metrics["ab_std"]
-            if deviation is None and metrics.get("dayoa_is_negative_control") == 1:
+            if deviation is None:
+                unavailable += 1
                 continue
             data[sample] = {"x": metrics["gt_depth_mean"], "y": deviation}
 
-        if data:
+        if data or unavailable:
             pconfig = {
                 "id": "somalier_het_check_plot",
                 "title": "Somalier: Sample Observed Heterozygosity",
@@ -598,15 +600,16 @@ class MultiqcModule(BaseMultiqcModule):
                 "ylab": "Standard deviation of allele-balance",
             }
 
+            description = "Standard deviation of heterozygous allele balance against mean depth."
+            if unavailable:
+                description += f" Allele-balance standard deviation was unavailable for {unavailable} sample records."
+
             self.add_section(
                 name="Heterozygosity",
-                description=(
-                    "Standard deviation of heterozygous allele balance against mean depth. "
-                    "Declared no-template controls with undefined allele balance are omitted from this plot."
-                ),
+                description=description,
                 helptext="A high standard deviation in allele balance suggests contamination.",
                 anchor="somalier-hetcheck",
-                plot=scatter.plot(data, pconfig),
+                plot=scatter.plot(data, pconfig) if data else None,
             )
 
     def somalier_sex_check_plot(self):
